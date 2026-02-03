@@ -1,7 +1,11 @@
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
+  const { user, logout } = useAuth();
+
+  const displayName = user?.fullName || user?.email || "Admin";
 
   return (
     <div className="min-h-screen bg-gray-900 text-white flex">
@@ -25,11 +29,14 @@ const AdminDashboard = () => {
           </h1>
 
           <p className="text-gray-300 mb-8">
-            Bạn đang đăng nhập với role <b>admin</b>.
+            Xin chào <b>{displayName}</b>.
           </p>
 
           <button
-            onClick={() => navigate("/login")}
+            onClick={() => {
+              logout();
+              navigate("/login");
+            }}
             className="px-6 py-2 bg-red-600 rounded hover:bg-red-700 transition"
           >
             Logout (về Login)

@@ -1,23 +1,25 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { Box } from "lucide-react";
 
 import InputField from "../components/InputField";
 import Button from "../components/Button";
-import { loginApi } from "../services/auth.api";
+import { loginApi, googleLoginApi } from "../services/auth.api";
 import { useAuth } from "../context/AuthContext";
+import { GoogleLogin } from "@react-oauth/google";
 
 // Component nhỏ cho khối Sign up
 const SignUpCard = () => (
   <div className="mt-10 border border-gray-200 rounded-xl p-10 bg-white">
-    <h3 className="text-3xl font-semibold text-gray-900">Sign up</h3>
+    <h3 className="text-3xl font-semibold text-gray-900">Đăng Ký</h3>
     <p className="text-gray-500 text-base mt-3 leading-relaxed">
-      Login with the data you entered during your registration.
+      Đăng ký với thông tin bạn đã nhập trong quá trình đăng ký.
     </p>
 
     <div className="mt-10">
       <Button to="/register" variant="signup" className="max-w-[560px] mx-auto">
-        Create account
+        Tạo tài khoản
       </Button>
     </div>
   </div>
@@ -41,13 +43,13 @@ const LoginPage = () => {
 
     try {
       const res = await loginApi({ email, password });
-      const { user } = res;
+      const { user, accessToken } = res;
 
       if (!user) {
-        throw new Error("Login response is missing user");
+        throw new Error("Chưa nhận được thông tin người dùng");
       }
 
-      login(user);
+      login({ user, accessToken });
 
       if (user.role === "admin") {
         navigate("/admin/dashboard");
@@ -55,7 +57,7 @@ const LoginPage = () => {
         navigate("/");
       }
     } catch (err) {
-      const message = err?.message || "Login failed";
+      const message = err?.message || "Đăng nhập thất bại";
       setError(message);
     } finally {
       setLoading(false);
@@ -84,10 +86,10 @@ const LoginPage = () => {
           </div>
 
           <h1 className="text-4xl font-bold text-gray-900 mb-3">
-            Login
+            Đăng Nhập
           </h1>
           <p className="text-gray-500 mb-12 text-base">
-            Login with the data you entered during your registration.
+            Đăng nhập để có thể truy cập nhiều dịch vụ hơn nhé!
           </p>
 
           <form onSubmit={handleLogin}>
@@ -119,34 +121,57 @@ const LoginPage = () => {
                 type="submit"
                 disabled={loading || !email.trim() || !password}
               >
-                {loading ? "Logging in..." : "Log in"}
+                {loading ? "Logging in..." : "Đăng nhập"}
               </Button>
             </div>
 
+            <div className="mb-9">
+              <div className="w-full [&>div]:w-full [&>div>div]:w-full [&_iframe]:w-full">
+                <GoogleLogin
+                  size="large"
+                  onSuccess={async (credentialResponse) => {
+                    try {
+                      setError("");
+                      setLoading(true);
+
+                      const credential = credentialResponse?.credential;
+                      if (!credential) throw new Error("Google credential missing");
+
+                      const res = await googleLoginApi({ credential });
+                      const { user, accessToken } = res;
+                      if (!user) throw new Error("Chưa nhận được thông tin người dùng");
+
+                      login({ user, accessToken });
+
+                      if (user.role === "admin") {
+                        navigate("/admin/dashboard");
+                      } else {
+                        navigate("/");
+                      }
+                    } catch (err) {
+                      setError(err?.message || "Đăng nhập Google thất bại");
+                    } finally {
+                      setLoading(false);
+                    }
+                  }}
+                  onError={() => setError("Đăng nhập Google thất bại")}
+                />
+              </div>
+            </div>
+
             <div className="flex justify-end mb-8">
-              <a
-                href="#"
+              <Link
+                to="/forgot-password"
                 className="text-sm text-gray-500 hover:text-blue-600 font-medium transition-colors"
               >
-                Did you forget your password?
-              </a>
+                Quên mật khẩu?
+              </Link>
             </div>
           </form>
 
           <SignUpCard />
         </div>
 
-        {/* FOOTER */}
-        <div className="mt-12 pt-8 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between text-xs text-gray-400 gap-4">
-          <div className="flex gap-6 font-medium">
-            <a href="#" className="hover:text-gray-600">Cookies</a>
-            <a href="#" className="hover:text-gray-600">Legal policy</a>
-          </div>
-          <div className="flex gap-6 items-center">
-            <span className="italic">Made with love in nowhere</span>
-            <span>Copyright 2021</span>
-          </div>
-        </div>
       </div>
     </div>
   );

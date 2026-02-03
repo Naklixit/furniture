@@ -1,29 +1,43 @@
-import { createContext, useContext, useMemo, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import {
+  clearAuthFromStorage,
+  readAccessTokenFromStorage,
+  readUserFromStorage,
+  setAuthToStorage,
+} from "../utils/authStorage";
 
 const AuthContext = createContext(null);
 
-const readUserFromStorage = () => {
-  try {
-    return JSON.parse(localStorage.getItem("user") || "null");
-  } catch {
-    return null;
-  }
-};
-
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(readUserFromStorage);
+  const [accessToken, setAccessToken] = useState(readAccessTokenFromStorage);
 
-  const login = (nextUser) => {
+  useEffect(() => {
+    const onAuthChanged = () => {
+      setUser(readUserFromStorage());
+      setAccessToken(readAccessTokenFromStorage());
+    };
+
+    window.addEventListener("auth:changed", onAuthChanged);
+    return () => window.removeEventListener("auth:changed", onAuthChanged);
+  }, []);
+
+  const login = ({ user: nextUser, accessToken: nextAccessToken }) => {
     setUser(nextUser);
-    localStorage.setItem("user", JSON.stringify(nextUser));
+    setAccessToken(nextAccessToken);
+    setAuthToStorage({ user: nextUser, accessToken: nextAccessToken });
   };
 
   const logout = () => {
     setUser(null);
-    localStorage.removeItem("user");
+    setAccessToken(null);
+    clearAuthFromStorage();
   };
 
-  const value = useMemo(() => ({ user, login, logout }), [user]);
+  const value = useMemo(
+    () => ({ user, accessToken, login, logout }),
+    [user, accessToken],
+  );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

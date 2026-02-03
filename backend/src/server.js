@@ -1,6 +1,7 @@
 const express = require("express");
 const bodyParser = require("body-parser");
 const cors = require("cors");
+const cookieParser = require("cookie-parser");
 require("dotenv").config();
 const connectDB = require("./config/connectDB.js");
 const routes = require("./routes/index.routes.js");
@@ -22,6 +23,7 @@ app.use(
     credentials: true,
   }),
 );
+app.use(cookieParser());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 connectDB();

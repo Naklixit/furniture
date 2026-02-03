@@ -34,20 +34,20 @@ const RegisterPage = () => {
     const normalizedFullName = trimmedFullName.replace(/\s+/g, " ");
 
     if (trimmedFullName.length === 0) {
-      nextErrors.fullName = "Full name cannot be blank";
+      nextErrors.fullName = "Họ Tên không được để trống";
     } else if (normalizedFullName.length < 2 || normalizedFullName.length > 50) {
-      nextErrors.fullName = "Full name must be 2-50 characters";
+      nextErrors.fullName = "Họ Tên phải có độ dài từ 2 đến 50 ký tự";
     } else if (!/^[\p{L}\p{M}]+(?: [\p{L}\p{M}]+)*$/u.test(normalizedFullName)) {
-      nextErrors.fullName = "Full name must contain letters only (no numbers)";
+      nextErrors.fullName = "Họ Tên chỉ được chứa chữ cái (không có số)";
     }
 
     const pwd = password;
     if (typeof pwd !== "string" || pwd.length === 0) {
-      nextErrors.password = "Password cannot be empty";
+      nextErrors.password = "Mật khẩu không được để trống";
     } else if (/^\s+$/.test(pwd)) {
-      nextErrors.password = "Password cannot be all spaces";
+      nextErrors.password = "Mật khẩu không được toàn khoảng trắng";
     } else if (pwd.length < 8 || pwd.length > 64) {
-      nextErrors.password = "Password must be 8-64 characters";
+      nextErrors.password = "Mật khẩu phải có độ dài từ 8 đến 64 ký tự";
     }
 
     setFieldErrors(nextErrors);
@@ -95,16 +95,16 @@ const RegisterPage = () => {
             <Box size={28} color="#6D28D9" strokeWidth={2} />
           </div>
 
-          <h1 className="text-4xl font-bold text-gray-900 mb-3">Register</h1>
+          <h1 className="text-4xl font-bold text-gray-900 mb-3">Đăng Ký</h1>
           <p className="text-gray-500 mb-12 text-base">
-            Create an account, then go back to login.
+            Tạo tài khoản, sau đó quay lại đăng nhập.
           </p>
 
           <form onSubmit={handleRegister}>
             <InputField
               id="fullName"
               type="text"
-              label="Full name"
+              label="Họ Tên"
               placeholder="Nguyen Van A"
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
@@ -149,26 +149,17 @@ const RegisterPage = () => {
                 type="submit"
                 disabled={loading || !canSubmit}
               >
-                {loading ? "Creating..." : "Create account"}
+                {loading ? "Đang tạo..." : "Tạo tài khoản"}
               </Button>
             </div>
 
             <Button variant="secondary" to="/login">
-              Back to login
+              Quay lại đăng nhập
             </Button>
           </form>
         </div>
 
-        <div className="mt-12 pt-8 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between text-xs text-gray-400 gap-4">
-          <div className="flex gap-6 font-medium">
-            <a href="#" className="hover:text-gray-600">Cookies</a>
-            <a href="#" className="hover:text-gray-600">Legal policy</a>
-          </div>
-          <div className="flex gap-6 items-center">
-            <span className="italic">Made with love in nowhere</span>
-            <span>Copyright 2021</span>
-          </div>
-        </div>
+        
       </div>
     </div>
   );
