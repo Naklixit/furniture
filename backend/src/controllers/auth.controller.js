@@ -19,13 +19,16 @@ const pickUser = (user) => {
     id: user._id,
     fullName: user.fullName,
     email: user.email,
+    phoneNumber: user.phoneNumber || "",
+    address: user.address || "",
     role: user.role,
   };
 };
 
-const unauthorized = (res) => res.status(401).json({ message: "Unauthorized" });
+const unauthorized = (res) =>
+  res.status(401).json({ message: "Không có quyền truy cập" });
 
-///Register
+/// Đăng ký
 
 const register = async (req, res, next) => {
   try {
@@ -38,7 +41,7 @@ const register = async (req, res, next) => {
 
     const normalizedEmail = normalizeEmail(email);
     if (!normalizedEmail) {
-      return res.status(400).json({ message: "Email is required" });
+      return res.status(400).json({ message: "Email là bắt buộc" });
     }
 
     const passwordResult = validatePassword(password);
@@ -48,7 +51,7 @@ const register = async (req, res, next) => {
 
     const existingUser = await User.findOne({ email: normalizedEmail });
     if (existingUser) {
-      return res.status(400).json({ message: "Email already exists" });
+      return res.status(400).json({ message: "Email đã tồn tại" });
     }
 
     const hashedPassword = await bcrypt.hash(passwordResult.value, 10);
@@ -57,6 +60,8 @@ const register = async (req, res, next) => {
       fullName: fullNameResult.value,
       email: normalizedEmail,
       password: hashedPassword,
+      phoneNumber: "",
+      address: "",
       role: "customer",
     });
 
@@ -65,7 +70,7 @@ const register = async (req, res, next) => {
     res.cookie("refreshToken", refreshToken, refreshCookieOptions());
 
     return res.status(201).json({
-      message: "Register success",
+      message: "Đăng ký thành công",
       user: pickUser(user),
       accessToken,
     });
@@ -73,7 +78,7 @@ const register = async (req, res, next) => {
     return next(err);
   }
 };
-//Login
+// Đăng nhập
 const login = async (req, res, next) => {
   try {
     const { email, password } = req.body || {};
@@ -84,22 +89,28 @@ const login = async (req, res, next) => {
       typeof password !== "string" ||
       password.length === 0
     ) {
-      return res.status(400).json({ message: "Missing email or password" });
+      return res.status(400).json({ message: "Thiếu email hoặc mật khẩu" });
     }
 
     const user = await User.findOne({ email: normalizedEmail });
     if (!user) {
-      return res.status(400).json({ message: "Invalid email or password" });
+      return res
+        .status(400)
+        .json({ message: "Email hoặc mật khẩu không đúng" });
     }
 
-    // Password-less accounts (e.g. Google login) cannot login via password flow
+    // Tài khoản không có mật khẩu (ví dụ đăng nhập Google) không thể đăng nhập bằng mật khẩu
     if (!user.password) {
-      return res.status(400).json({ message: "Invalid email or password" });
+      return res
+        .status(400)
+        .json({ message: "Email hoặc mật khẩu không đúng" });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      return res.status(400).json({ message: "Invalid email or password" });
+      return res
+        .status(400)
+        .json({ message: "Email hoặc mật khẩu không đúng" });
     }
 
     const accessToken = signAccessToken(user);
@@ -107,7 +118,7 @@ const login = async (req, res, next) => {
     res.cookie("refreshToken", refreshToken, refreshCookieOptions());
 
     return res.json({
-      message: "Login success",
+      message: "Đăng nhập thành công",
       user: pickUser(user),
       accessToken,
     });
@@ -130,6 +141,8 @@ const googleLogin = async (req, res, next) => {
         fullName,
         email: normalizedEmail,
         password: "",
+        phoneNumber: "",
+        address: "",
         role: "customer",
       });
     }
@@ -139,7 +152,7 @@ const googleLogin = async (req, res, next) => {
     res.cookie("refreshToken", refreshToken, refreshCookieOptions());
 
     return res.json({
-      message: "Login success",
+      message: "Đăng nhập thành công",
       user: pickUser(user),
       accessToken,
     });
@@ -147,7 +160,7 @@ const googleLogin = async (req, res, next) => {
     return next(err);
   }
 };
-
+//Làm mới Token
 const refresh = async (req, res, next) => {
   try {
     const token = req.cookies?.refreshToken;
@@ -169,7 +182,7 @@ const refresh = async (req, res, next) => {
     res.cookie("refreshToken", nextRefreshToken, refreshCookieOptions());
 
     return res.json({
-      message: "Refresh success",
+      message: "Làm mới phiên đăng nhập thành công",
       accessToken,
       user: pickUser(user),
     });
@@ -184,7 +197,7 @@ const logout = async (req, res) => {
     maxAge: 0,
   });
 
-  return res.json({ message: "Logout success" });
+  return res.json({ message: "Đăng xuất thành công" });
 };
 
 module.exports = {

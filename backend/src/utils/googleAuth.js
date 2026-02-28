@@ -6,7 +6,7 @@ const getRequiredEnv = (key, fallback = "") => {
   const value = process.env[key];
   if (value && value.trim().length > 0) return value;
   if (isProd && !fallback) {
-    const err = new Error(`Missing required env: ${key}`);
+    const err = new Error(`Thiếu biến môi trường bắt buộc: ${key}`);
     err.statusCode = 500;
     throw err;
   }
@@ -26,7 +26,7 @@ const getClient = () => {
 
 const verifyGoogleIdToken = async (idToken) => {
   if (typeof idToken !== "string" || idToken.trim().length === 0) {
-    const err = new Error("Missing Google credential");
+    const err = new Error("Thiếu thông tin xác thực Google");
     err.statusCode = 400;
     throw err;
   }
@@ -39,7 +39,7 @@ const verifyGoogleIdToken = async (idToken) => {
 
   const payload = ticket.getPayload();
   if (!payload) {
-    const err = new Error("Invalid Google credential");
+    const err = new Error("Thông tin xác thực Google không hợp lệ");
     err.statusCode = 401;
     throw err;
   }
@@ -49,13 +49,13 @@ const verifyGoogleIdToken = async (idToken) => {
   const emailVerified = payload.email_verified;
 
   if (!email) {
-    const err = new Error("Google account email is missing");
+    const err = new Error("Tài khoản Google thiếu email");
     err.statusCode = 400;
     throw err;
   }
 
   if (emailVerified === false) {
-    const err = new Error("Google account email is not verified");
+    const err = new Error("Email tài khoản Google chưa được xác minh");
     err.statusCode = 401;
     throw err;
   }

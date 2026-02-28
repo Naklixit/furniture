@@ -1,8 +1,9 @@
 import { Link, useNavigate } from "react-router-dom";
-import { ShoppingCart, User, ChevronDown, Search, LogOut } from "lucide-react";
+import { ShoppingCart, User, ChevronDown, Search, LogOut, UserRound, Package, Home } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/useAuth";
 import { logoutApi } from "../services/auth.api";
+import { useCartStore } from "../stores/cart.store";
 
 function Header() {
   const navigate = useNavigate();
@@ -10,12 +11,13 @@ function Header() {
   const isLogin = Boolean(user);
   const [open, setOpen] = useState(false);
   const menuRef = useRef(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const displayName = useMemo(() => {
-    return user?.fullName || user?.email || "Account";
+    return user?.fullName || user?.email || "Tài khoản";
   }, [user]);
 
-  const cartCount = 0;
+  const cartCount = useCartStore((s) => (typeof s.count === "function" ? s.count() : 0));
 
   useEffect(() => {
     const onDocClick = (e) => {
@@ -34,49 +36,80 @@ function Header() {
     try {
       await logoutApi();
     } catch {
-      // ignore - still clear local auth
+      // Bỏ qua lỗi - vẫn xoá trạng thái đăng nhập cục bộ
     } finally {
       logout();
       setOpen(false);
-      navigate("/login");
+      navigate("/");
     }
   };
 
+  const handleSearchSubmit = (e) => {
+    e.preventDefault();
+    const q = searchQuery.trim();
+
+    const params = new URLSearchParams();
+    if (q) params.set("q", q);
+
+    const qs = params.toString();
+    navigate(qs ? `/products?${qs}` : "/products");
+  };
+
   return (
-    <header className="w-full border-w bg-white/90 backdrop-blur supports-[backdrop-filter]:bg-white/70 sticky top-0 z-40">
-      <div className="max-w-7xl mx-auto h-16 px-6 flex items-center justify-between">
+    <header className="w-full border-g bg-white/90 backdrop-blur supports-[backdrop-filter]:bg-white/70 sticky top-0 z-40">
+      <div className="max-w-7xl mx-auto px-6 flex items-center justify-between h-20 gap-8">
         {/* Logo */}
-        <Link to="/" className="text-xl font-semibold tracking-tight">
-          MyShop<span className="text-blue-600">.</span>
+        <Link to="/" className="flex items-center gap-2 shrink-0" aria-label="Trang chủ">
+          <div className="w-10 h-10 bg-zinc-900 rounded-xl flex items-center justify-center">
+            <Home className="w-6 h-6 text-white" />
+          </div>
+          <span className="text-2xl font-bold tracking-tight text-zinc-900 hidden sm:block">
+            FRADEL
+          </span>
         </Link>
 
-        {/* Search */}
-        <div className="hidden md:flex items-center border border-gray-200 rounded-full px-4 py-2 w-96 bg-white shadow-sm">
-          <Search size={18} className="text-gray-400" />
-          <input
-            type="text"
-            placeholder="Search products..."
-            className="ml-2 w-full outline-none text-sm bg-transparent"
-          />
-        </div>
-
-        {/* Actions */}
-        <div className="flex items-center gap-4 relative">
-          {/* Cart */}
-          <div
-            className="relative cursor-pointer p-2 rounded-full hover:bg-gray-100 transition"
-            onClick={() => navigate("/cart")}
-            title="Cart"
-          >
-            <ShoppingCart size={22} />
-            {cartCount > 0 && (
-              <span className="absolute -top-1 -right-1 text-[10px] min-w-5 h-5 flex items-center justify-center bg-red-500 text-white rounded-full px-1">
-                {cartCount}
-              </span>
-            )}
+        {/* Tìm kiếm */}
+        <form
+          className="hidden md:flex items-center h-10 flex-1 basis-0 mx-6 min-w-[260px] max-w-[360px] lg:max-w-[440px] xl:max-w-[520px]"
+          onSubmit={handleSearchSubmit}
+        >
+          <div className="relative w-full h-full">
+            <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Tìm kiếm sản phẩm, thương hiệu..."
+              aria-label="Tìm kiếm"
+              className="w-full h-full pl-11 pr-4 text-sm outline-none bg-gray-100/80 border border-gray-200 rounded-full placeholder:text-gray-400 focus:bg-white focus:border-gray-300 transition"
+            />
           </div>
+        </form>
 
-          {/* User */}
+        {/* Thao tác */}
+        <div className="flex items-center gap-4 relative shrink-0">
+          {/* Giỏ hàng */}
+          <button
+            type="button"
+            className="relative cursor-pointer px-3 py-2 rounded-full hover:bg-gray-100 transition flex items-center gap-2"
+            onClick={() => navigate("/cart")}
+            title="Giỏ hàng"
+          >
+            <span className="relative">
+              <ShoppingCart size={22} />
+              {cartCount > 0 && (
+                <span className="absolute -top-2 -left-2 text-[10px] min-w-4 h-4 flex items-center justify-center bg-red-500 text-white rounded-full px-1 ring-2 ring-white shadow-sm">
+                  {cartCount}
+                </span>
+              )}
+            </span>
+            <span className="hidden sm:inline text-sm font-medium text-gray-800">Giỏ hàng</span>
+            {cartCount > 0 && (
+              <span className="sr-only">{cartCount} sản phẩm</span>
+            )}
+          </button>
+
+          {/* Người dùng */}
           {isLogin ? (
             <div ref={menuRef} className="relative">
               <button
@@ -93,28 +126,28 @@ function Header() {
 
               {open && (
                 <div className="absolute right-0 top-12 w-56 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden">
-                  {user?.role === "admin" ? (
-                    <button
-                      type="button"
-                      className="w-full text-left px-4 py-3 hover:bg-gray-50 text-sm"
-                      onClick={() => {
-                        setOpen(false);
-                        navigate("/admin/dashboard");
-                      }}
-                    >
-                      Admin dashboard
-                    </button>
-                  ) : null}
+                  <button
+                    type="button"
+                    className="w-full flex items-center gap-3 text-left px-4 py-3 hover:bg-gray-50 text-sm text-gray-800"
+                    onClick={() => {
+                      setOpen(false);
+                      navigate("/profile?tab=profile");
+                    }}
+                  >
+                    <UserRound size={18} className="text-gray-600" />
+                    Thông tin tài khoản
+                  </button>
 
                   <button
                     type="button"
-                    className="w-full text-left px-4 py-3 hover:bg-gray-50 text-sm"
+                    className="w-full flex items-center gap-3 text-left px-4 py-3 hover:bg-gray-50 text-sm text-gray-800"
                     onClick={() => {
                       setOpen(false);
-                      navigate("/profile");
+                      navigate("/profile?tab=orders");
                     }}
                   >
-                    Profile
+                    <Package size={18} className="text-gray-600" />
+                    Đơn hàng của tôi
                   </button>
 
                   <div className="h-px bg-gray-100" />
@@ -125,7 +158,7 @@ function Header() {
                     onClick={handleLogout}
                   >
                     <LogOut size={16} />
-                    Logout
+                    Đăng xuất
                   </button>
                 </div>
               )}
@@ -134,17 +167,17 @@ function Header() {
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                className="px-4 py-2 text-sm font-medium rounded-full hover:bg-gray-100 transition"
+                className="px-4 py-2 text-sm font-medium hover:bg-gray-100 shadow-sm transition"
                 onClick={() => navigate("/login")}
               >
-                Login
+                Đăng Nhập
               </button>
               <button
                 type="button"
-                className="px-4 py-2 text-sm font-semibold rounded-full bg-blue-600 text-white hover:bg-blue-700 transition shadow-sm"
+                className="px-4 py-2 text-sm font-semibold  bg-orange-500 hover:bg-orange-600 text-white  transition shadow-sm"
                 onClick={() => navigate("/register")}
               >
-                Register
+                Đăng Ký
               </button>
             </div>
           )}

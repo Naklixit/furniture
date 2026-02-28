@@ -1,15 +1,16 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Link } from "react-router-dom";
-import { Box } from "lucide-react";
 
 import InputField from "../components/InputField";
 import Button from "../components/Button";
 import { loginApi, googleLoginApi } from "../services/auth.api";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/useAuth";
 import { GoogleLogin } from "@react-oauth/google";
+import { useToast } from "../context/useToast";
+import AuthShell from "../components/AuthShell";
 
-// Component nhỏ cho khối Sign up
+// Component nhỏ cho khối Đăng ký
 const SignUpCard = () => (
   <div className="mt-10 border border-gray-200 rounded-xl p-10 bg-white">
     <h3 className="text-3xl font-semibold text-gray-900">Đăng Ký</h3>
@@ -28,6 +29,7 @@ const SignUpCard = () => (
 const LoginPage = () => {
   const navigate = useNavigate();
   const { login } = useAuth();
+  const toast = useToast();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -50,6 +52,7 @@ const LoginPage = () => {
       }
 
       login({ user, accessToken });
+      toast.success("Đăng nhập thành công");
 
       if (user.role === "admin") {
         navigate("/admin/dashboard");
@@ -59,121 +62,103 @@ const LoginPage = () => {
     } catch (err) {
       const message = err?.message || "Đăng nhập thất bại";
       setError(message);
+      toast.error(message);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex w-full bg-white font-sans">
-      
-      {/* LEFT IMAGE */}
-      <div className="hidden lg:block lg:w-1/2 relative overflow-hidden">
-        <img
-          src="https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?q=80&w=2070&auto=format&fit=crop"
-          alt="Luxury Interior"
-          className="absolute inset-0 w-full h-full object-cover"
-        />
-        <div className="absolute inset-0 bg-black/5"></div>
-      </div>
+    <AuthShell>
+      <div className="bg-white">
+        <h1 className="text-4xl font-bold text-gray-900 mb-3">Đăng Nhập</h1>
 
-      {/* RIGHT FORM */}
-      <div className="w-full lg:w-1/2 flex flex-col justify-between p-8 md:p-16 lg:p-24 bg-white overflow-y-auto h-screen">
-        <div>
-          {/* Logo */}
-          <div className="w-14 h-14 bg-[#EBE5F9] rounded-xl flex items-center justify-center mb-8">
-            <Box size={28} color="#6D28D9" strokeWidth={2} />
+        <form onSubmit={handleLogin}>
+          <InputField
+            id="email"
+            type="email"
+            label="Email"
+            placeholder="john.doe@gmail.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+
+          <InputField
+            id="password"
+            type="password"
+            label="Mật khẩu"
+            placeholder="••••••••••••"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+
+          {error ? <div className="mt-4 text-sm text-red-600">{error}</div> : null}
+
+          <div className="mt-8 mb-6">
+            <Button
+              variant="primary"
+              type="submit"
+              disabled={!email.trim() || !password}
+              loading={loading}
+            >
+              {loading ? "Đang đăng nhập..." : "Đăng nhập"}
+            </Button>
           </div>
 
-          <h1 className="text-4xl font-bold text-gray-900 mb-3">
-            Đăng Nhập
-          </h1>
-          <p className="text-gray-500 mb-12 text-base">
-            Đăng nhập để có thể truy cập nhiều dịch vụ hơn nhé!
-          </p>
-
-          <form onSubmit={handleLogin}>
-            <InputField
-              id="email"
-              type="email"
-              label="Email"
-              placeholder="john.doe@gmail.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-
-            <InputField
-              id="password"
-              type="password"
-              label="Password"
-              placeholder="••••••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-
-            {error ? (
-              <div className="mt-4 text-sm text-red-600">{error}</div>
-            ) : null}
-
-            <div className="mt-8 mb-6">
-              <Button
-                variant="primary"
-                type="submit"
-                disabled={loading || !email.trim() || !password}
-              >
-                {loading ? "Logging in..." : "Đăng nhập"}
-              </Button>
+          <div className="relative my-6">
+            <div className="h-px w-full bg-gray-200" />
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-3 text-xs text-gray-500">
+              Hoặc
             </div>
+          </div>
 
-            <div className="mb-9">
-              <div className="w-full [&>div]:w-full [&>div>div]:w-full [&_iframe]:w-full">
-                <GoogleLogin
-                  size="large"
-                  onSuccess={async (credentialResponse) => {
-                    try {
-                      setError("");
-                      setLoading(true);
+          <div className={loading ? "opacity-70 pointer-events-none" : ""}>
+            <div className="w-full [&>div]:w-full [&>div>div]:w-full [&_iframe]:w-full">
+              <GoogleLogin
+                size="large"
+                onSuccess={async (credentialResponse) => {
+                  try {
+                    setError("");
+                    setLoading(true);
 
-                      const credential = credentialResponse?.credential;
-                      if (!credential) throw new Error("Google credential missing");
+                    const credential = credentialResponse?.credential;
+                    if (!credential) throw new Error("Thiếu thông tin xác thực Google");
 
-                      const res = await googleLoginApi({ credential });
-                      const { user, accessToken } = res;
-                      if (!user) throw new Error("Chưa nhận được thông tin người dùng");
+                    const res = await googleLoginApi({ credential });
+                    const { user, accessToken } = res;
+                    if (!user) throw new Error("Chưa nhận được thông tin người dùng");
 
-                      login({ user, accessToken });
+                    login({ user, accessToken });
 
-                      if (user.role === "admin") {
-                        navigate("/admin/dashboard");
-                      } else {
-                        navigate("/");
-                      }
-                    } catch (err) {
-                      setError(err?.message || "Đăng nhập Google thất bại");
-                    } finally {
-                      setLoading(false);
+                    if (user.role === "admin") {
+                      navigate("/admin/dashboard");
+                    } else {
+                      navigate("/");
                     }
-                  }}
-                  onError={() => setError("Đăng nhập Google thất bại")}
-                />
-              </div>
+                  } catch (err) {
+                    setError(err?.message || "Đăng nhập Google thất bại");
+                  } finally {
+                    setLoading(false);
+                  }
+                }}
+                onError={() => setError("Đăng nhập Google thất bại")}
+              />
             </div>
+          </div>
 
-            <div className="flex justify-end mb-8">
-              <Link
-                to="/forgot-password"
-                className="text-sm text-gray-500 hover:text-blue-600 font-medium transition-colors"
-              >
-                Quên mật khẩu?
-              </Link>
-            </div>
-          </form>
+          <div className="flex justify-end mb-8">
+            <Link
+              to="/forgot-password"
+              className="text-sm text-gray-500 hover:text-blue-600 font-medium transition-colors"
+            >
+              Quên mật khẩu?
+            </Link>
+          </div>
+        </form>
 
-          <SignUpCard />
-        </div>
-
+        <SignUpCard />
       </div>
-    </div>
+    </AuthShell>
   );
 };
 

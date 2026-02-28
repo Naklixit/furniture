@@ -6,11 +6,22 @@ import AdminDashboard from "./pages/AdminDashboard";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import VerifyOtpPage from "./pages/VerifyOtpPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
-import { useAuth } from "./context/AuthContext";
+import ProfilePage from "./pages/ProfilePage";
+import ProductsPage from "./pages/ProductsPage";
+import ProductDetailPage from "./pages/ProductDetailPage";
+import CartPage from "./pages/CartPage";
+import { useAuth } from "./context/useAuth";
 function App() {
-  const { user } = useAuth();
-  const isAuthed = Boolean(user);
+  const { user, isAuthed, bootstrapped } = useAuth();
   const defaultAuthedPath = user?.role === "admin" ? "/admin/dashboard" : "/";
+
+  if (!bootstrapped) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white text-gray-700">
+        Đang tải...
+      </div>
+    );
+  }
 
   return (
     <Routes>
@@ -38,17 +49,49 @@ function App() {
         path="/"
         element={user?.role === "admin" ? <Navigate to="/admin/dashboard" replace /> : <HomePage />}
       />
+
+      <Route
+        path="/products"
+        element={user?.role === "admin" ? <Navigate to="/admin/dashboard" replace /> : <ProductsPage />}
+      />
+
+      <Route
+        path="/products/:slug"
+        element={
+          user?.role === "admin" ? <Navigate to="/admin/dashboard" replace /> : <ProductDetailPage />
+        }
+      />
+
+      <Route
+        path="/cart"
+        element={user?.role === "admin" ? <Navigate to="/admin/dashboard" replace /> : <CartPage />}
+      />
       <Route
         path="/admin/dashboard"
         element={
-          isAuthed && user?.role === "admin" ? (
+          !isAuthed ? (
+            <Navigate to="/login" replace />
+          ) : user?.role === "admin" ? (
             <AdminDashboard />
           ) : (
-            <Navigate to="/login" replace />
+            <Navigate to="/" replace />
           )
         }
       />
-      <Route path="*" element={<Navigate to={isAuthed ? defaultAuthedPath : "/login"} replace />} />
+
+      <Route
+        path="/profile"
+        element={
+          !isAuthed ? (
+            <Navigate to="/login" replace />
+          ) : user?.role === "admin" ? (
+            <Navigate to="/admin/dashboard" replace />
+          ) : (
+            <ProfilePage />
+          )
+        }
+      />
+      <Route path="*" element={<Navigate to={isAuthed ? defaultAuthedPath : "/"} replace />} />
     </Routes>
   );
 }

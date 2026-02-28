@@ -7,7 +7,7 @@ const getRequiredSecret = (envKey, fallback) => {
   if (value && value.trim().length > 0) return value;
 
   if (isProd) {
-    const err = new Error(`Missing required env: ${envKey}`);
+    const err = new Error(`Thiếu biến môi trường bắt buộc: ${envKey}`);
     err.statusCode = 500;
     throw err;
   }
@@ -25,10 +25,9 @@ const PASSWORD_RESET_SECRET = () =>
     "dev_password_reset_secret_change_me",
   );
 
-const ACCESS_EXPIRES_IN = process.env.JWT_ACCESS_EXPIRES_IN || "15m";
-const REFRESH_EXPIRES_IN = process.env.JWT_REFRESH_EXPIRES_IN || "7d";
-const PASSWORD_RESET_EXPIRES_IN =
-  process.env.JWT_PASSWORD_RESET_EXPIRES_IN || "15m";
+const ACCESS_EXPIRES_IN = process.env.JWT_ACCESS_EXPIRES_IN;
+const REFRESH_EXPIRES_IN = process.env.JWT_REFRESH_EXPIRES_IN;
+const PASSWORD_RESET_EXPIRES_IN = process.env.JWT_PASSWORD_RESET_EXPIRES_IN;
 
 const signAccessToken = (user) => {
   return jwt.sign(

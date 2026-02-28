@@ -6,7 +6,7 @@ const getEnv = (key, fallback = "") => {
   const value = process.env[key];
   if (value && value.trim().length > 0) return value;
   if (isProd && fallback === "") {
-    const err = new Error(`Missing required env: ${key}`);
+    const err = new Error(`Thiếu biến môi trường bắt buộc: ${key}`);
     err.statusCode = 500;
     throw err;
   }
@@ -52,44 +52,41 @@ const getFrom = () => {
   const from = getEnv("SMTP_FROM");
   if (from) return from;
   const user = getEnv("SMTP_USER", "no-reply@example.com");
-  return `No Reply <${user}>`;
+  return `Không trả lời <${user}>`;
 };
 
 const sendPasswordResetOtpEmail = async ({
   to,
   fullName,
   otp,
-  minutes = 10,
+  minutes = 3,
 }) => {
   if (!isEmailConfigured()) {
     if (isProd) {
       const err = new Error(
-        "Email service is not configured (missing SMTP_USER/SMTP_PASS)",
+        "Dịch vụ email chưa được cấu hình (thiếu SMTP_USER/SMTP_PASS)",
       );
       err.statusCode = 500;
       throw err;
     }
-
-    // Dev fallback: log OTP so you can continue testing the flow.
-    // eslint-disable-next-line no-console
-    console.log(
-      `[DEV] Password reset OTP for ${to}: ${otp} (expires in ${minutes}m)`,
-    );
     return;
   }
 
-  const subject = "Your password reset code";
-  const greeting = fullName ? `Hi ${fullName},` : "Hi,";
+  const subject = "Mã OTP đặt lại mật khẩu";
+  const greeting = fullName ? `Xin chào ${fullName},` : "Xin chào,";
 
-  const text = `${greeting}\n\nYour OTP code is: ${otp}\nThis code expires in ${minutes} minutes.\n\nIf you did not request a password reset, you can ignore this email.\n`;
+  const text = `${greeting}\n\nMã OTP của bạn là: ${otp}\nMã này có hiệu lực trong ${minutes} phút.\nLưu ý: Bạn chỉ có thể yêu cầu gửi OTP tối đa 3 lần trong 1 ngày.\n\nNếu bạn không yêu cầu đặt lại mật khẩu, vui lòng bỏ qua email này.\n`;
 
   const html = `
-    <div style="font-family: Arial, sans-serif; line-height: 1.5; color: #111;">
+    <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #111;">
       <p>${greeting}</p>
-      <p>Your OTP code is:</p>
-      <p style="font-size: 24px; font-weight: bold; letter-spacing: 2px;">${otp}</p>
-      <p>This code expires in <b>${minutes} minutes</b>.</p>
-      <p style="color:#555;">If you did not request a password reset, you can ignore this email.</p>
+      <p>Mã OTP để đặt lại mật khẩu của bạn là:</p>
+      <p style="font-size: 28px; font-weight: 800; letter-spacing: 3px; margin: 12px 0;">${otp}</p>
+      <p>Mã này có hiệu lực trong <b>${minutes} phút</b>.</p>
+      <p style="margin-top: 10px; color:#333;">
+        <b>Lưu ý:</b> Bạn chỉ có thể yêu cầu gửi OTP tối đa <b>3 lần</b> trong <b>1 ngày</b>.
+      </p>
+      <p style="color:#555;">Nếu bạn không yêu cầu đặt lại mật khẩu, vui lòng bỏ qua email này.</p>
     </div>
   `;
 

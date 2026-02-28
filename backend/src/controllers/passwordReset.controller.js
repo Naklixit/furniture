@@ -8,7 +8,6 @@ const forgotPassword = async (req, res, next) => {
   try {
     const { email } = req.body || {};
     const result = await requestPasswordReset({ email });
-    // Keep response generic
     return res.json({ message: result.message });
   } catch (err) {
     return next(err);

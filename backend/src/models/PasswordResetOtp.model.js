@@ -39,12 +39,19 @@ const passwordResetOtpSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    dailySentDate: {
+      type: String,
+      default: null,
+      index: true,
+    },
+    dailySentCount: {
+      type: Number,
+      default: 0,
+    },
   },
   { timestamps: true },
 );
 
-// TTL: auto-delete when expiresAt is reached.
-// Note: MongoDB TTL monitor runs every ~60s.
 passwordResetOtpSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
 module.exports = mongoose.model("PasswordResetOtp", passwordResetOtpSchema);

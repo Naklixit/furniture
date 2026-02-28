@@ -11,23 +11,51 @@ const {
 const { sendPasswordResetOtpEmail } = require("../utils/mailer");
 
 const OTP_LENGTH = 6;
-const OTP_MAX_ATTEMPTS = 5;
+const OTP_MAX_ATTEMPTS = Number(process.env.OTP_MAX_ATTEMPTS);
 const OTP_COOLDOWN_MS = 60 * 1000;
-const DEFAULT_OTP_MINUTES = 10;
+const DEFAULT_OTP_MINUTES = Number(process.env.PASSWORD_RESET_OTP_MINUTES);
+const OTP_MAX_SENDS_PER_DAY = 3;
+const OTP_DAILY_LIMIT_CODE = "OTP_DAILY_LIMIT";
 
-const httpError = (statusCode, message) => {
+const httpError = (statusCode, message, code) => {
   const err = new Error(message);
   err.statusCode = statusCode;
+  if (code) err.code = code;
   return err;
 };
 
 const genericForgotPasswordMessage =
-  "If the email exists, we sent an OTP code to reset your password.";
+  "Nếu email tồn tại trong hệ thống, một mã OTP đã được gửi để đặt lại mật khẩu.";
+
+const otpSentMessage = (minutes) =>
+  `OTP đã được gửi đến email của bạn. Mã có hiệu lực ${minutes} phút.`;
+
+const otpDailyLimitMessage =
+  "Bạn đã hết số lần gửi OTP trong ngày. Vui lòng đợi đến ngày mai để thử lại.";
+
+const otpCooldownMessage =
+  "Bạn vừa yêu cầu OTP. Vui lòng đợi ít nhất 60 giây rồi thử lại.";
+
+const isDailyLimited = (record, todayKey) => {
+  if (!record) return false;
+  if (record.dailySentDate !== todayKey) return false;
+  return Number(record.dailySentCount || 0) >= OTP_MAX_SENDS_PER_DAY;
+};
 
 const getOtpMinutes = () => {
-  const minutes = Number(process.env.PASSWORD_RESET_OTP_MINUTES);
-  if (Number.isFinite(minutes) && minutes > 0) return minutes;
-  return DEFAULT_OTP_MINUTES;
+  const minutes = DEFAULT_OTP_MINUTES;
+  // if (Number.isFinite(minutes) && minutes > 0) {
+  //   return Math.min(minutes, DEFAULT_OTP_MINUTES);
+  // }
+  return minutes;
+};
+
+const getDayKey = (date = new Date()) => {
+  // YYYY-MM-DD (theo múi giờ của server)
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
 };
 
 const generateOtp = () => {
@@ -55,7 +83,7 @@ const parseResetTokenPayload = (resetToken) => {
 const requestPasswordReset = async ({ email }) => {
   const normalizedEmail = normalizeEmail(email);
   if (!normalizedEmail) {
-    throw httpError(400, "Email is required");
+    throw httpError(400, "Email là bắt buộc");
   }
 
   const user = await User.findOne({ email: normalizedEmail });
@@ -64,11 +92,23 @@ const requestPasswordReset = async ({ email }) => {
   }
 
   const existing = await PasswordResetOtp.findOne({ userId: user._id });
+  const todayKey = getDayKey();
+
+  const currentDailyCount = (() => {
+    if (!existing) return 0;
+    if (existing.dailySentDate !== todayKey) return 0;
+    return Number(existing.dailySentCount || 0);
+  })();
+
+  if (existing && currentDailyCount >= OTP_MAX_SENDS_PER_DAY) {
+    throw httpError(429, otpDailyLimitMessage, OTP_DAILY_LIMIT_CODE);
+  }
+
   const lastSentAtMs = existing?.lastSentAt
     ? new Date(existing.lastSentAt).getTime()
     : 0;
   if (lastSentAtMs && Date.now() - lastSentAtMs < OTP_COOLDOWN_MS) {
-    return { message: genericForgotPasswordMessage };
+    return { message: otpCooldownMessage };
   }
 
   const otp = generateOtp();
@@ -87,6 +127,11 @@ const requestPasswordReset = async ({ email }) => {
       usedAt: null,
       attempts: 0,
       lastSentAt: new Date(),
+      dailySentDate: todayKey,
+      dailySentCount:
+        (existing?.dailySentDate === todayKey
+          ? Number(existing?.dailySentCount || 0)
+          : 0) + 1,
     },
     { upsert: true, new: true, setDefaultsOnInsert: true },
   );
@@ -98,40 +143,45 @@ const requestPasswordReset = async ({ email }) => {
     minutes: otpMinutes,
   });
 
-  return { message: genericForgotPasswordMessage, otpId: record?._id };
+  return { message: otpSentMessage(otpMinutes), otpId: record?._id };
 };
 
 const verifyPasswordResetOtp = async ({ email, otp }) => {
   const normalizedEmail = normalizeEmail(email);
 
   if (!normalizedEmail || typeof otp !== "string" || otp.trim().length === 0) {
-    throw httpError(400, "Missing email or otp");
+    throw httpError(400, "Thiếu email hoặc mã OTP");
   }
 
   const user = await User.findOne({ email: normalizedEmail });
   if (!user) {
-    throw httpError(400, "Invalid or expired OTP");
+    throw httpError(400, "Mã OTP không hợp lệ hoặc đã hết hạn");
   }
 
   const record = await PasswordResetOtp.findOne({ userId: user._id });
   if (!record || record.usedAt) {
-    throw httpError(400, "Invalid or expired OTP");
+    throw httpError(400, "Mã OTP không hợp lệ hoặc đã hết hạn");
+  }
+
+  const todayKey = getDayKey();
+  if (isDailyLimited(record, todayKey)) {
+    throw httpError(429, otpDailyLimitMessage, OTP_DAILY_LIMIT_CODE);
   }
 
   if (!record.otpHash || isExpired(record.expiresAt)) {
-    throw httpError(400, "Invalid or expired OTP");
+    throw httpError(400, "Mã OTP không hợp lệ hoặc đã hết hạn");
   }
 
   const attempts = Number(record.attempts || 0);
   if (attempts >= OTP_MAX_ATTEMPTS) {
-    throw httpError(400, "Invalid or expired OTP");
+    throw httpError(400, "Mã OTP không hợp lệ hoặc đã hết hạn");
   }
 
   const ok = await bcrypt.compare(String(otp), record.otpHash);
   if (!ok) {
     record.attempts = attempts + 1;
     await record.save();
-    throw httpError(400, "Invalid or expired OTP");
+    throw httpError(400, "Mã OTP không hợp lệ hoặc đã hết hạn");
   }
 
   record.verifiedAt = new Date();
@@ -139,7 +189,7 @@ const verifyPasswordResetOtp = async ({ email, otp }) => {
   await record.save();
 
   const resetToken = signPasswordResetToken(user, record._id);
-  return { message: "OTP verified", resetToken };
+  return { message: "Xác thực OTP thành công", resetToken };
 };
 
 const resetPasswordWithToken = async ({
@@ -148,11 +198,11 @@ const resetPasswordWithToken = async ({
   confirmPassword,
 }) => {
   if (typeof resetToken !== "string" || resetToken.trim().length === 0) {
-    throw httpError(400, "Missing resetToken");
+    throw httpError(400, "Thiếu resetToken");
   }
 
   if (password !== confirmPassword) {
-    throw httpError(400, "Passwords do not match");
+    throw httpError(400, "Mật khẩu không khớp");
   }
 
   const passwordResult = validatePassword(password);
@@ -164,31 +214,36 @@ const resetPasswordWithToken = async ({
   try {
     parsed = parseResetTokenPayload(resetToken);
   } catch (e) {
-    throw httpError(401, "Invalid or expired reset token");
+    throw httpError(401, "Reset token không hợp lệ hoặc đã hết hạn");
   }
 
   if (!parsed) {
-    throw httpError(401, "Invalid or expired reset token");
+    throw httpError(401, "Reset token không hợp lệ hoặc đã hết hạn");
   }
 
   const { userId, otpId } = parsed;
 
   const user = await User.findById(userId);
   if (!user) {
-    throw httpError(401, "Invalid or expired reset token");
+    throw httpError(401, "Reset token không hợp lệ hoặc đã hết hạn");
   }
 
   const record = await PasswordResetOtp.findById(otpId);
   if (!record) {
-    throw httpError(401, "Invalid or expired reset token");
+    throw httpError(401, "Reset token không hợp lệ hoặc đã hết hạn");
+  }
+
+  const todayKey = getDayKey();
+  if (isDailyLimited(record, todayKey)) {
+    throw httpError(429, otpDailyLimitMessage, OTP_DAILY_LIMIT_CODE);
   }
 
   if (String(record.userId) !== String(user._id)) {
-    throw httpError(401, "Invalid or expired reset token");
+    throw httpError(401, "Reset token không hợp lệ hoặc đã hết hạn");
   }
 
   if (record.usedAt || !record.verifiedAt || isExpired(record.expiresAt)) {
-    throw httpError(401, "Invalid or expired reset token");
+    throw httpError(401, "Reset token không hợp lệ hoặc đã hết hạn");
   }
 
   user.password = await bcrypt.hash(passwordResult.value, 10);
@@ -197,7 +252,7 @@ const resetPasswordWithToken = async ({
   record.usedAt = new Date();
   await record.save();
 
-  return { message: "Password reset success" };
+  return { message: "Đặt lại mật khẩu thành công" };
 };
 
 module.exports = {
