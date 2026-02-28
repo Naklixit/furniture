@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 const AdminModal = ({
   open,
@@ -37,6 +38,15 @@ const AdminModal = ({
   }, [open]);
 
   useEffect(() => {
+    if (!mounted) return;
+    const prevOverflow = document?.body?.style?.overflow;
+    if (document?.body?.style) document.body.style.overflow = "hidden";
+    return () => {
+      if (document?.body?.style) document.body.style.overflow = prevOverflow || "";
+    };
+  }, [mounted]);
+
+  useEffect(() => {
     return () => {
       if (closeTimerRef.current) {
         clearTimeout(closeTimerRef.current);
@@ -57,8 +67,8 @@ const AdminModal = ({
 
   if (!mounted) return null;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+  return createPortal(
+    <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
       <div
         className={
           "absolute inset-0 bg-black/40 transition-opacity duration-200 " +
@@ -107,7 +117,8 @@ const AdminModal = ({
 
         {footer ? <div className="px-6 py-4 border-t border-gray-200">{footer}</div> : null}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 };
 

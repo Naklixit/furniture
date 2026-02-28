@@ -21,6 +21,7 @@ export const useCartStore = create(
   persist(
     (set, get) => ({
       items: [],
+      discount: null,
 
       addItem: (item) => {
         const normalized = normalizeItem(item);
@@ -88,7 +89,35 @@ export const useCartStore = create(
         });
       },
 
-      clear: () => set({ items: [] }),
+      setDiscount: (discount) => {
+        if (!discount) {
+          set({ discount: null });
+          return;
+        }
+
+        const code = String(discount?.code || "")
+          .trim()
+          .toUpperCase();
+        if (!code) {
+          set({ discount: null });
+          return;
+        }
+
+        set({
+          discount: {
+            code,
+            percentOff: Math.max(
+              0,
+              Math.min(100, Number(discount?.percentOff || 0)),
+            ),
+            minOrderValue: Math.max(0, Number(discount?.minOrderValue || 0)),
+          },
+        });
+      },
+
+      clearDiscount: () => set({ discount: null }),
+
+      clear: () => set({ items: [], discount: null }),
 
       count: () => {
         const items = get().items || [];
@@ -107,7 +136,7 @@ export const useCartStore = create(
     {
       name: "cart",
       storage: createJSONStorage(() => localStorage),
-      partialize: (state) => ({ items: state.items }),
+      partialize: (state) => ({ items: state.items, discount: state.discount }),
     },
   ),
 );

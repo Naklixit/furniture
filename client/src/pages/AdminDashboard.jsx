@@ -19,13 +19,14 @@ import UsersManagementPanel from "./admin/users/UsersManagementPanel";
 import CategoriesManagementPanel from "./admin/categories/CategoriesManagementPanel";
 import ProductsManagementPanel from "./admin/products/ProductsManagementPanel";
 import DiscountCodesManagementPanel from "./admin/discounts/DiscountCodesManagementPanel";
+import OrdersManagementPanel from "./admin/orders/OrdersManagementPanel";
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const toast = useToast();
 
-  const [activeKey, setActiveKey] = useState("orders");
+  const [activeKey, setActiveKey] = useState("stats");
   const [searchQuery, setSearchQuery] = useState("");
 
   const displayName = useMemo(
@@ -63,7 +64,7 @@ const AdminDashboard = () => {
         return {
           searchPlaceholder: "Tìm kiếm đơn hàng...",
           primaryActionLabel: "Thêm đơn hàng",
-          showPrimaryAction: true,
+          showPrimaryAction: false,
         };
       case "users":
         return {
@@ -106,6 +107,7 @@ const AdminDashboard = () => {
   const isCategoriesTab = activeKey === "categories";
   const isProductsTab = activeKey === "products";
   const isDiscountsTab = activeKey === "discounts";
+  const isOrdersTab = activeKey === "orders";
 //Đăng xuất
   const handleLogout = async () => {
     try {
@@ -138,6 +140,8 @@ const AdminDashboard = () => {
         <ProductsManagementPanel toast={toast} />
       ) : isDiscountsTab ? (
         <DiscountCodesManagementPanel toast={toast} />
+      ) : isOrdersTab ? (
+        <OrdersManagementPanel toast={toast} />
       ) : (
         <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
           <div className="px-6 py-4 flex items-center justify-between gap-3">

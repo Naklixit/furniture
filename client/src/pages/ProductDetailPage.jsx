@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
-import { BadgeCheck, Truck, RotateCcw, ShoppingCart } from "lucide-react";
+import { Link, useParams, useSearchParams } from "react-router-dom";
+import { BadgeCheck, Truck, RotateCcw, ShoppingCart, Star } from "lucide-react";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import { getProductBySlugApi } from "../services/product.api";
+import { listProductReviewsApi } from "../services/review.api";
 import { useCartStore } from "../stores/cart.store";
 import { useToast } from "../context/useToast";
 
@@ -58,8 +59,11 @@ const formatWeight = (weight) => {
 
 export default function ProductDetailPage() {
   const { slug } = useParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const addItem = useCartStore((s) => s.addItem);
   const toast = useToast();
+
+  const [animKey, setAnimKey] = useState(0);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -67,8 +71,25 @@ export default function ProductDetailPage() {
   const [activeUrl, setActiveUrl] = useState("");
   const [qty, setQty] = useState(1);
   const [tab, setTab] = useState("desc");
+  const [tabPanelKey, setTabPanelKey] = useState(0);
+
+  const [reviewsLoading, setReviewsLoading] = useState(false);
+  const [reviewsError, setReviewsError] = useState("");
+  const [reviews, setReviews] = useState([]);
+  const [reviewsMeta, setReviewsMeta] = useState({ page: 1, limit: 6, total: 0, totalPages: 1 });
+
+  const setTabAndUrl = (nextTab) => {
+    const t = nextTab === "reviews" ? "reviews" : "desc";
+    setTab(t);
+    const sp = new URLSearchParams(searchParams);
+    if (t === "reviews") sp.set("tab", "reviews");
+    else sp.delete("tab");
+    setSearchParams(sp, { replace: true, preventScrollReset: true });
+  };
 
   useEffect(() => {
+    setAnimKey((k) => k + 1);
+
     let mounted = true;
     const run = async () => {
       try {
@@ -79,11 +100,22 @@ export default function ProductDetailPage() {
         if (!mounted) return;
         setProduct(p);
         setQty(1);
-        setTab("desc");
+
+        try {
+          const sp = new URLSearchParams(window.location.search);
+          const t = (sp.get("tab") || "").toLowerCase();
+          setTab(t === "reviews" ? "reviews" : "desc");
+        } catch {
+          setTab("desc");
+        }
 
         const main = p?.images?.main?.url || "";
         const firstGallery = Array.isArray(p?.images?.gallery) ? p.images.gallery[0]?.url : "";
         setActiveUrl(main || firstGallery || "");
+
+        setReviews([]);
+        setReviewsMeta({ page: 1, limit: 6, total: 0, totalPages: 1 });
+        setReviewsError("");
       } catch (e) {
         if (!mounted) return;
         setError(e?.message || e?.response?.data?.message || "Không thể tải sản phẩm");
@@ -104,6 +136,43 @@ export default function ProductDetailPage() {
       mounted = false;
     };
   }, [slug]);
+
+  useEffect(() => {
+    setTabPanelKey((k) => k + 1);
+  }, [tab]);
+
+  const fetchReviews = async ({ page, append }) => {
+    const productId = product?.id;
+    if (!productId) return;
+    if (reviewsLoading) return;
+
+    try {
+      setReviewsLoading(true);
+      setReviewsError("");
+      const res = await listProductReviewsApi(productId, { page, limit: reviewsMeta.limit });
+      const items = Array.isArray(res?.items) ? res.items : [];
+      const meta = res?.meta || {};
+      setReviewsMeta({
+        page: Number(meta.page || page),
+        limit: Number(meta.limit || reviewsMeta.limit),
+        total: Number(meta.total || 0),
+        totalPages: Number(meta.totalPages || 1),
+      });
+      setReviews((prev) => (append ? [...prev, ...items] : items));
+    } catch (e) {
+      setReviewsError(e?.message || "Không thể tải đánh giá");
+    } finally {
+      setReviewsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (tab !== "reviews") return;
+    if (!product?.id) return;
+    if (reviews.length) return;
+    fetchReviews({ page: 1, append: false });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, product?.id]);
 
   const images = useMemo(() => {
     const list = [];
@@ -159,18 +228,47 @@ export default function ProductDetailPage() {
     toast?.success?.("Đã thêm vào giỏ hàng");
   };
 
+  const ratingAvg = useMemo(() => {
+    const v = Number(product?.ratingAvg || 0);
+    if (!Number.isFinite(v)) return 0;
+    return Math.max(0, Math.min(5, v));
+  }, [product]);
+
+  const ratingCount = useMemo(() => Math.max(0, Number(product?.ratingCount || 0)), [product]);
+
+  const StarsRow = ({ value, size = 16 }) => {
+    const v = Math.max(0, Math.min(5, Number(value || 0)));
+    return (
+      <div className="inline-flex items-center gap-0.5">
+        {Array.from({ length: 5 }).map((_, i) => {
+          const idx = i + 1;
+          const active = v >= idx - 0.35;
+          return (
+            <Star
+              key={idx}
+              size={size}
+              className={active ? "text-amber-500" : "text-gray-300"}
+              fill={active ? "currentColor" : "none"}
+            />
+          );
+        })}
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <Header />
 
       <main className="max-w-7xl mx-auto px-6 py-10 w-full flex-1">
-        <div className="text-sm text-gray-600">
-          <Link to="/products" className="hover:text-teal-700">
-            Sản phẩm
-          </Link>
-          <span className="mx-2">/</span>
-          <span className="text-gray-900 font-semibold">{product?.name || "Chi tiết"}</span>
-        </div>
+        <div key={animKey} className="anim-fade-up">
+          <div className="text-sm text-gray-600">
+            <Link to="/products" className="hover:text-teal-700">
+              Sản phẩm
+            </Link>
+            <span className="mx-2">/</span>
+            <span className="text-gray-900 font-semibold">{product?.name || "Chi tiết"}</span>
+          </div>
 
         {loading ? (
           <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -248,8 +346,19 @@ export default function ProductDetailPage() {
 
                 <div className="mt-2 text-2xl md:text-3xl font-extrabold text-gray-900">{product.name}</div>
 
-                {/* Rating: bạn sẽ làm sau */}
-                <div className="mt-2 text-sm text-gray-400">&nbsp;</div>
+                <div className="mt-2 flex items-center gap-2 text-sm text-gray-600">
+                  <StarsRow value={ratingAvg} />
+                  <span className="font-semibold text-gray-900">{ratingAvg ? ratingAvg.toFixed(1) : "0.0"}/5</span>
+                  <span className="text-gray-400">•</span>
+                  <button
+                    type="button"
+                    onClick={() => setTabAndUrl("reviews")}
+                    className="text-teal-700 hover:text-teal-800 font-semibold"
+                    title="Xem đánh giá"
+                  >
+                    {ratingCount} đánh giá
+                  </button>
+                </div>
 
                 <div className="mt-4">
                   <div className="text-3xl font-extrabold text-teal-700">{formatMoneyVND(price.final)}</div>
@@ -352,7 +461,7 @@ export default function ProductDetailPage() {
               <div className="px-6 pt-4 flex items-center gap-6 border-b border-gray-100">
                 <button
                   type="button"
-                  onClick={() => setTab("desc")}
+                  onClick={() => setTabAndUrl("desc")}
                   className={
                     "pb-3 text-sm font-semibold transition " +
                     (tab === "desc" ? "text-teal-700 border-b-2 border-teal-600" : "text-gray-600 hover:text-gray-900")
@@ -362,7 +471,7 @@ export default function ProductDetailPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setTab("reviews")}
+                  onClick={() => setTabAndUrl("reviews")}
                   className={
                     "pb-3 text-sm font-semibold transition " +
                     (tab === "reviews" ? "text-teal-700 border-b-2 border-teal-600" : "text-gray-600 hover:text-gray-900")
@@ -373,18 +482,105 @@ export default function ProductDetailPage() {
               </div>
 
               <div className="p-6">
-                {tab === "reviews" ? (
-                  <div className="text-sm text-gray-600">
-                    Phần đánh giá bạn sẽ làm sau.
+                <div key={tabPanelKey} className="anim-fade-up">
+                  {tab === "reviews" ? (
+                    <div>
+                    <div className="rounded-2xl border border-gray-200 bg-gray-50 p-5">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                        <div>
+                          <div className="text-sm font-bold text-gray-900">Đánh giá sản phẩm</div>
+                          <div className="mt-1 text-sm text-gray-600">Tổng cộng {ratingCount} đánh giá</div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <div className="text-3xl font-extrabold text-gray-900">{ratingAvg ? ratingAvg.toFixed(1) : "0.0"}</div>
+                          <div>
+                            <StarsRow value={ratingAvg} size={18} />
+                            <div className="mt-1 text-xs text-gray-500">Trung bình / 5 sao</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-5">
+                      {reviewsLoading && !reviews.length ? (
+                        <div className="text-sm text-gray-500">Đang tải đánh giá...</div>
+                      ) : reviewsError ? (
+                        <div className="text-sm text-red-600">{reviewsError}</div>
+                      ) : !reviews.length ? (
+                        <div className="rounded-2xl border border-dashed border-gray-300 bg-white p-10 text-center">
+                          <div className="text-sm font-semibold text-gray-900">Chưa có đánh giá</div>
+                          <div className="mt-1 text-sm text-gray-600">Hãy là người đầu tiên chia sẻ trải nghiệm của bạn.</div>
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          {reviews.map((r) => (
+                            <div
+                              key={String(r?.id || Math.random())}
+                              className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition-all duration-200 hover:shadow-md"
+                            >
+                              <div className="flex items-start justify-between gap-4">
+                                <div className="min-w-0">
+                                  <div className="text-sm font-bold text-gray-900 truncate">{r?.user?.fullName || "Khách hàng"}</div>
+                                  <div className="mt-1 flex items-center gap-2">
+                                    <StarsRow value={Number(r?.rating || 0)} size={16} />
+                                    <span className="text-xs text-gray-500">
+                                      {r?.createdAt ? new Intl.DateTimeFormat("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" }).format(new Date(r.createdAt)) : ""}
+                                    </span>
+                                  </div>
+                                </div>
+                                <div className="text-xs font-semibold text-gray-700">{Number(r?.rating || 0)}/5</div>
+                              </div>
+
+                              <div className="mt-3 text-sm text-gray-700 whitespace-pre-line">{r?.content || ""}</div>
+
+                              {Array.isArray(r?.images) && r.images.length ? (
+                                <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                  {r.images.slice(0, 4).map((img) => (
+                                    <a
+                                      key={img.publicId || img.url}
+                                      href={img.url}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="block rounded-2xl border border-gray-200 overflow-hidden bg-gray-50 hover:shadow-sm transition"
+                                      title="Mở ảnh"
+                                    >
+                                      <img src={img.url} alt="" className="w-full h-24 object-cover" />
+                                    </a>
+                                  ))}
+                                </div>
+                              ) : null}
+                            </div>
+                          ))}
+
+                          {reviewsMeta.page < reviewsMeta.totalPages ? (
+                            <div className="pt-2 flex items-center justify-center">
+                              <button
+                                type="button"
+                                onClick={() => fetchReviews({ page: reviewsMeta.page + 1, append: true })}
+                                disabled={reviewsLoading}
+                                className={
+                                  "h-10 px-5 rounded-xl border text-sm font-semibold transition-transform duration-150 active:scale-[0.99] " +
+                                  (reviewsLoading
+                                    ? "bg-gray-50 border-gray-200 text-gray-400 cursor-not-allowed"
+                                    : "bg-white border-gray-200 text-gray-700 hover:bg-gray-50")
+                                }
+                              >
+                                {reviewsLoading ? "Đang tải..." : "Xem thêm"}
+                              </button>
+                            </div>
+                          ) : null}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                ) : (
-                  <>
+                  ) : (
+                    <>
                     <div className="text-sm text-gray-700 whitespace-pre-line">
                       {product.description ? product.description : "Chưa có mô tả."}
                     </div>
 
                     <div className="mt-8">
-                      <div className="text-sm font-extrabold text-gray-900">Thông số chi tiết</div>
+                      <div className="text-sm font-bold text-gray-900">Thông số chi tiết</div>
                       <div className="mt-3 overflow-hidden rounded-xl border border-gray-100">
                         <div className="divide-y divide-gray-100">
                           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 px-4 py-3">
@@ -421,12 +617,14 @@ export default function ProductDetailPage() {
                         </div>
                       </div>
                     </div>
-                  </>
-                )}
+                    </>
+                  )}
+                </div>
               </div>
             </div>
           </>
         )}
+        </div>
       </main>
 
       <Footer />

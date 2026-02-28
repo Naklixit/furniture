@@ -241,7 +241,7 @@ function Header() {
             />
 
             {suggestOpen && (String(searchQuery || "").trim().length >= 2) ? (
-              <div className="absolute left-0 right-0 top-[calc(100%+10px)] bg-white border border-gray-200 rounded-2xl shadow-xl overflow-hidden z-50">
+              <div className="absolute left-0 right-0 top-[calc(100%+10px)] bg-white border border-gray-200 rounded-2xl shadow-xl overflow-hidden z-50 anim-drop-down">
                 <div className="max-h-[360px] overflow-auto">
                   {suggestLoading ? (
                     <div className="px-4 py-4 text-sm text-gray-600">Đang tìm kiếm...</div>
@@ -257,7 +257,11 @@ function Header() {
                         const name = p?.name || "";
                         const price = p?.salePrice ?? p?.originalPrice ?? 0;
                         return (
-                          <li key={p?.id || `${p?.slug || ""}-${idx}`}> 
+                          <li
+                            key={p?.id || `${p?.slug || ""}-${idx}`}
+                            className="anim-fade-up"
+                            style={{ animationDelay: `${Math.min(idx * 18, 120)}ms` }}
+                          >
                             <button
                               type="button"
                               className={

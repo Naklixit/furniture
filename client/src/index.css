@@ -10,7 +10,8 @@ body,
           
 body {
   margin: 0;
-  /* font-family: Georgia, 'Times New Roman', Times, serif; */
+  font-family: "Montserrat", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial,
+    "Apple Color Emoji", "Segoe UI Emoji";
 }
 
 @keyframes fadeUp {
@@ -26,6 +27,23 @@ body {
 
 .anim-fade-up {
   animation: fadeUp 180ms ease-out both;
+}
+
+@keyframes dropDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.99);
+    filter: blur(1px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+.anim-drop-down {
+  animation: dropDown 180ms ease-out both;
 }
 
 @keyframes toastIn {

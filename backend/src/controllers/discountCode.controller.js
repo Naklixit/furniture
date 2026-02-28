@@ -1,24 +1,19 @@
 const DiscountCode = require("../models/DiscountCode.model");
 
-const escapeRegex = (value) =>
-  String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const {
+  escapeRegex,
+  parsePositiveInt,
+  normalizeCode,
+} = require("../utils/orderUtils");
 
-const parsePositiveInt = (value, fallback) => {
-  const n = Number.parseInt(value, 10);
-  if (!Number.isFinite(n) || n <= 0) return fallback;
-  return n;
-};
+const hasOwn = (obj, key) =>
+  Object.prototype.hasOwnProperty.call(obj || {}, key);
 
 const parseNonNegativeNumber = (value, fallback = 0) => {
   if (value === null || value === undefined || value === "") return fallback;
   const n = Number(value);
   if (!Number.isFinite(n) || n < 0) return null;
   return n;
-};
-
-const normalizeCode = (value) => {
-  const raw = typeof value === "string" ? value.trim() : "";
-  return raw.toUpperCase();
 };
 
 const parseDateInput = (value, mode) => {
@@ -55,6 +50,54 @@ const parseDateInput = (value, mode) => {
   return d;
 };
 
+const computeDiscountTotals = ({ orderSubtotal, percentOff }) => {
+  const pct = Number(percentOff || 0);
+  const subtotal = Number(orderSubtotal || 0);
+  const discountAmount = Math.max(0, Math.round((subtotal * pct) / 100));
+  const finalTotal = Math.max(0, Math.round(subtotal - discountAmount));
+  return { discountAmount, finalTotal };
+};
+
+const getDiscountIneligibility = ({
+  discountCode,
+  userId,
+  now,
+  orderSubtotal,
+}) => {
+  if (!discountCode) {
+    return { status: 404, message: "Mã giảm giá không tồn tại" };
+  }
+  if (!discountCode.isActive) {
+    return { status: 400, message: "Mã giảm giá đang bị tắt" };
+  }
+  if (Number(discountCode.remainingUses || 0) <= 0) {
+    return { status: 400, message: "Mã giảm giá đã hết lượt sử dụng" };
+  }
+  if ((discountCode.usedBy || []).some((u) => String(u) === String(userId))) {
+    return { status: 400, message: "Bạn đã sử dụng mã giảm giá này rồi" };
+  }
+  if (
+    discountCode.startsAt &&
+    now.getTime() < new Date(discountCode.startsAt).getTime()
+  ) {
+    return { status: 400, message: "Mã giảm giá chưa tới thời gian áp dụng" };
+  }
+  if (
+    discountCode.endsAt &&
+    now.getTime() > new Date(discountCode.endsAt).getTime()
+  ) {
+    return { status: 400, message: "Mã giảm giá đã hết hạn" };
+  }
+  const minOrderValue = Number(discountCode.minOrderValue || 0);
+  if (orderSubtotal < minOrderValue) {
+    return {
+      status: 400,
+      message: `Đơn tối thiểu ${minOrderValue.toLocaleString("vi-VN")}đ để áp mã`,
+    };
+  }
+  return null;
+};
+
 const pickDiscountCode = (d) => ({
   id: d._id,
   code: d.code,
@@ -68,10 +111,10 @@ const pickDiscountCode = (d) => ({
   updatedAt: d.updatedAt,
 });
 
-const validatePayload = (body, { partial = false } = {}) => {
+const validatePayload = (body, { partial = false, current = null } = {}) => {
   const updates = {};
 
-  if (!partial || Object.prototype.hasOwnProperty.call(body || {}, "code")) {
+  if (!partial || hasOwn(body, "code")) {
     const code = normalizeCode(body?.code);
     if (!code) return { ok: false, message: "Mã giảm giá là bắt buộc" };
     if (!/^[A-Z0-9_-]{3,30}$/.test(code)) {
@@ -83,10 +126,7 @@ const validatePayload = (body, { partial = false } = {}) => {
     updates.code = code;
   }
 
-  if (
-    !partial ||
-    Object.prototype.hasOwnProperty.call(body || {}, "percentOff")
-  ) {
+  if (!partial || hasOwn(body, "percentOff")) {
     const percentOff = Number(body?.percentOff);
     if (!Number.isFinite(percentOff) || percentOff <= 0 || percentOff > 100) {
       return { ok: false, message: "Giảm giá phải trong khoảng 1-100 (%)" };
@@ -94,10 +134,7 @@ const validatePayload = (body, { partial = false } = {}) => {
     updates.percentOff = Math.round(percentOff);
   }
 
-  if (
-    !partial ||
-    Object.prototype.hasOwnProperty.call(body || {}, "minOrderValue")
-  ) {
+  if (!partial || hasOwn(body, "minOrderValue")) {
     const minOrderValue = parseNonNegativeNumber(body?.minOrderValue, 0);
     if (minOrderValue === null) {
       return { ok: false, message: "Đơn tối thiểu phải là số >= 0" };
@@ -105,10 +142,7 @@ const validatePayload = (body, { partial = false } = {}) => {
     updates.minOrderValue = minOrderValue;
   }
 
-  if (
-    !partial ||
-    Object.prototype.hasOwnProperty.call(body || {}, "remainingUses")
-  ) {
+  if (!partial || hasOwn(body, "remainingUses")) {
     const remainingUses = parseNonNegativeNumber(body?.remainingUses, 0);
     if (remainingUses === null) {
       return { ok: false, message: "Số lượng còn lại phải là số >= 0" };
@@ -116,30 +150,26 @@ const validatePayload = (body, { partial = false } = {}) => {
     updates.remainingUses = Math.round(remainingUses);
   }
 
-  if (
-    !partial ||
-    Object.prototype.hasOwnProperty.call(body || {}, "startsAt")
-  ) {
+  if (!partial || hasOwn(body, "startsAt")) {
     const startsAt = parseDateInput(body?.startsAt, "start");
     updates.startsAt = startsAt;
   }
 
-  if (!partial || Object.prototype.hasOwnProperty.call(body || {}, "endsAt")) {
+  if (!partial || hasOwn(body, "endsAt")) {
     const endsAt = parseDateInput(body?.endsAt, "end");
     updates.endsAt = endsAt;
   }
 
-  if (
-    Object.prototype.hasOwnProperty.call(updates, "startsAt") ||
-    Object.prototype.hasOwnProperty.call(updates, "endsAt")
-  ) {
-    const s = Object.prototype.hasOwnProperty.call(updates, "startsAt")
-      ? updates.startsAt
-      : body?.startsAt;
-    const e = Object.prototype.hasOwnProperty.call(updates, "endsAt")
-      ? updates.endsAt
-      : body?.endsAt;
-    if (s && e && new Date(s).getTime() > new Date(e).getTime()) {
+  const finalStartsAt = hasOwn(updates, "startsAt")
+    ? updates.startsAt
+    : (current?.startsAt ?? null);
+  const finalEndsAt = hasOwn(updates, "endsAt")
+    ? updates.endsAt
+    : (current?.endsAt ?? null);
+  if (finalStartsAt && finalEndsAt) {
+    const s = new Date(finalStartsAt).getTime();
+    const e = new Date(finalEndsAt).getTime();
+    if (Number.isFinite(s) && Number.isFinite(e) && s > e) {
       return {
         ok: false,
         message: "Thời gian không hợp lệ (từ ngày phải <= đến ngày)",
@@ -147,10 +177,7 @@ const validatePayload = (body, { partial = false } = {}) => {
     }
   }
 
-  if (
-    !partial ||
-    Object.prototype.hasOwnProperty.call(body || {}, "isActive")
-  ) {
+  if (!partial || hasOwn(body, "isActive")) {
     if (typeof body?.isActive === "boolean") {
       updates.isActive = body.isActive;
     } else if (!partial) {
@@ -228,33 +255,13 @@ const updateDiscountCode = async (req, res, next) => {
 
     const { ok, message, updates } = validatePayload(req.body, {
       partial: true,
+      current: found,
     });
     if (!ok) return res.status(400).json({ message });
     if (Object.keys(updates).length === 0) {
       return res
         .status(400)
         .json({ message: "Không có trường hợp lệ để cập nhật" });
-    }
-
-    const nextStartsAt = Object.prototype.hasOwnProperty.call(
-      updates,
-      "startsAt",
-    )
-      ? updates.startsAt
-      : found.startsAt;
-    const nextEndsAt = Object.prototype.hasOwnProperty.call(updates, "endsAt")
-      ? updates.endsAt
-      : found.endsAt;
-    if (nextStartsAt && nextEndsAt) {
-      const s = new Date(nextStartsAt).getTime();
-      const e = new Date(nextEndsAt).getTime();
-      if (Number.isFinite(s) && Number.isFinite(e) && s > e) {
-        return res
-          .status(400)
-          .json({
-            message: "Thời gian không hợp lệ (từ ngày phải <= đến ngày)",
-          });
-      }
     }
 
     Object.assign(found, updates);
@@ -332,49 +339,21 @@ const applyDiscountCode = async (req, res, next) => {
 
     if (!updated) {
       const exists = await DiscountCode.findOne({ code });
-      if (!exists)
-        return res.status(404).json({ message: "Mã giảm giá không tồn tại" });
-      if (!exists.isActive)
-        return res.status(400).json({ message: "Mã giảm giá đang bị tắt" });
-      if (Number(exists.remainingUses || 0) <= 0) {
-        return res
-          .status(400)
-          .json({ message: "Mã giảm giá đã hết lượt sử dụng" });
-      }
-      if ((exists.usedBy || []).some((u) => String(u) === String(userId))) {
-        return res
-          .status(400)
-          .json({ message: "Bạn đã sử dụng mã giảm giá này rồi" });
-      }
-      if (
-        exists.startsAt &&
-        now.getTime() < new Date(exists.startsAt).getTime()
-      ) {
-        return res
-          .status(400)
-          .json({ message: "Mã giảm giá chưa tới thời gian áp dụng" });
-      }
-      if (exists.endsAt && now.getTime() > new Date(exists.endsAt).getTime()) {
-        return res.status(400).json({ message: "Mã giảm giá đã hết hạn" });
-      }
-      const minOrderValue = Number(exists.minOrderValue || 0);
-      if (orderSubtotal < minOrderValue) {
-        return res
-          .status(400)
-          .json({
-            message: `Đơn tối thiểu ${minOrderValue.toLocaleString("vi-VN")}đ để áp mã`,
-          });
-      }
-
+      const fail = getDiscountIneligibility({
+        discountCode: exists,
+        userId,
+        now,
+        orderSubtotal,
+      });
+      if (fail) return res.status(fail.status).json({ message: fail.message });
       return res.status(400).json({ message: "Không thể áp dụng mã giảm giá" });
     }
 
     const percentOff = Number(updated.percentOff || 0);
-    const discountAmount = Math.max(
-      0,
-      Math.round((orderSubtotal * percentOff) / 100),
-    );
-    const finalTotal = Math.max(0, Math.round(orderSubtotal - discountAmount));
+    const { discountAmount, finalTotal } = computeDiscountTotals({
+      orderSubtotal,
+      percentOff,
+    });
 
     return res.json({
       message: "Áp mã giảm giá thành công",
@@ -413,47 +392,20 @@ const validateDiscountCode = async (req, res, next) => {
     const now = new Date();
 
     const exists = await DiscountCode.findOne({ code });
-    if (!exists)
-      return res.status(404).json({ message: "Mã giảm giá không tồn tại" });
-    if (!exists.isActive)
-      return res.status(400).json({ message: "Mã giảm giá đang bị tắt" });
-    if (Number(exists.remainingUses || 0) <= 0) {
-      return res
-        .status(400)
-        .json({ message: "Mã giảm giá đã hết lượt sử dụng" });
-    }
-    if ((exists.usedBy || []).some((u) => String(u) === String(userId))) {
-      return res
-        .status(400)
-        .json({ message: "Bạn đã sử dụng mã giảm giá này rồi" });
-    }
-    if (
-      exists.startsAt &&
-      now.getTime() < new Date(exists.startsAt).getTime()
-    ) {
-      return res
-        .status(400)
-        .json({ message: "Mã giảm giá chưa tới thời gian áp dụng" });
-    }
-    if (exists.endsAt && now.getTime() > new Date(exists.endsAt).getTime()) {
-      return res.status(400).json({ message: "Mã giảm giá đã hết hạn" });
-    }
+    const fail = getDiscountIneligibility({
+      discountCode: exists,
+      userId,
+      now,
+      orderSubtotal,
+    });
+    if (fail) return res.status(fail.status).json({ message: fail.message });
 
     const minOrderValue = Number(exists.minOrderValue || 0);
-    if (orderSubtotal < minOrderValue) {
-      return res
-        .status(400)
-        .json({
-          message: `Đơn tối thiểu ${minOrderValue.toLocaleString("vi-VN")}đ để áp mã`,
-        });
-    }
-
     const percentOff = Number(exists.percentOff || 0);
-    const discountAmount = Math.max(
-      0,
-      Math.round((orderSubtotal * percentOff) / 100),
-    );
-    const finalTotal = Math.max(0, Math.round(orderSubtotal - discountAmount));
+    const { discountAmount, finalTotal } = computeDiscountTotals({
+      orderSubtotal,
+      percentOff,
+    });
 
     return res.json({
       message: "Mã giảm giá hợp lệ",

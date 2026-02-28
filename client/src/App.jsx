@@ -10,7 +10,11 @@ import ProfilePage from "./pages/ProfilePage";
 import ProductsPage from "./pages/ProductsPage";
 import ProductDetailPage from "./pages/ProductDetailPage";
 import CartPage from "./pages/CartPage";
+import CheckoutPage from "./pages/CheckoutPage";
+import OrderSuccessPage from "./pages/OrderSuccessPage";
+import OrderDetailPage from "./pages/OrderDetailPage";
 import { useAuth } from "./context/useAuth";
+import ScrollToTop from "./components/ScrollToTop";
 function App() {
   const { user, isAuthed, bootstrapped } = useAuth();
   const defaultAuthedPath = user?.role === "admin" ? "/admin/dashboard" : "/";
@@ -24,75 +28,119 @@ function App() {
   }
 
   return (
-    <Routes>
-      <Route
-        path="/login"
-        element={isAuthed ? <Navigate to={defaultAuthedPath} replace /> : <LoginPage />}
-      />
-      <Route
-        path="/register"
-        element={isAuthed ? <Navigate to={defaultAuthedPath} replace /> : <RegisterPage />}
-      />
-      <Route
-        path="/forgot-password"
-        element={isAuthed ? <Navigate to={defaultAuthedPath} replace /> : <ForgotPasswordPage />}
-      />
-      <Route
-        path="/verify-otp"
-        element={isAuthed ? <Navigate to={defaultAuthedPath} replace /> : <VerifyOtpPage />}
-      />
-      <Route
-        path="/reset-password"
-        element={isAuthed ? <Navigate to={defaultAuthedPath} replace /> : <ResetPasswordPage />}
-      />
-      <Route
-        path="/"
-        element={user?.role === "admin" ? <Navigate to="/admin/dashboard" replace /> : <HomePage />}
-      />
+    <>
+      <ScrollToTop />
+      <Routes>
+        <Route
+          path="/login"
+          element={isAuthed ? <Navigate to={defaultAuthedPath} replace /> : <LoginPage />}
+        />
+        <Route
+          path="/register"
+          element={isAuthed ? <Navigate to={defaultAuthedPath} replace /> : <RegisterPage />}
+        />
+        <Route
+          path="/forgot-password"
+          element={isAuthed ? <Navigate to={defaultAuthedPath} replace /> : <ForgotPasswordPage />}
+        />
+        <Route
+          path="/verify-otp"
+          element={isAuthed ? <Navigate to={defaultAuthedPath} replace /> : <VerifyOtpPage />}
+        />
+        <Route
+          path="/reset-password"
+          element={isAuthed ? <Navigate to={defaultAuthedPath} replace /> : <ResetPasswordPage />}
+        />
+        <Route
+          path="/"
+          element={
+            user?.role === "admin" ? <Navigate to="/admin/dashboard" replace /> : <HomePage />
+          }
+        />
 
-      <Route
-        path="/products"
-        element={user?.role === "admin" ? <Navigate to="/admin/dashboard" replace /> : <ProductsPage />}
-      />
+        <Route
+          path="/products"
+          element={
+            user?.role === "admin" ? <Navigate to="/admin/dashboard" replace /> : <ProductsPage />
+          }
+        />
 
-      <Route
-        path="/products/:slug"
-        element={
-          user?.role === "admin" ? <Navigate to="/admin/dashboard" replace /> : <ProductDetailPage />
-        }
-      />
+        <Route
+          path="/products/:slug"
+          element={
+            user?.role === "admin" ? <Navigate to="/admin/dashboard" replace /> : <ProductDetailPage />
+          }
+        />
 
-      <Route
-        path="/cart"
-        element={user?.role === "admin" ? <Navigate to="/admin/dashboard" replace /> : <CartPage />}
-      />
-      <Route
-        path="/admin/dashboard"
-        element={
-          !isAuthed ? (
-            <Navigate to="/login" replace />
-          ) : user?.role === "admin" ? (
-            <AdminDashboard />
-          ) : (
-            <Navigate to="/" replace />
-          )
-        }
-      />
+        <Route
+          path="/cart"
+          element={
+            user?.role === "admin" ? <Navigate to="/admin/dashboard" replace /> : <CartPage />
+          }
+        />
 
-      <Route
-        path="/profile"
-        element={
-          !isAuthed ? (
-            <Navigate to="/login" replace />
-          ) : user?.role === "admin" ? (
-            <Navigate to="/admin/dashboard" replace />
-          ) : (
-            <ProfilePage />
-          )
-        }
-      />
-      <Route path="*" element={<Navigate to={isAuthed ? defaultAuthedPath : "/"} replace />} />
-    </Routes>
+        <Route
+          path="/checkout"
+          element={
+            user?.role === "admin" ? (
+              <Navigate to="/admin/dashboard" replace />
+            ) : (
+              <CheckoutPage />
+            )
+          }
+        />
+
+        <Route
+          path="/order/success"
+          element={
+            user?.role === "admin" ? (
+              <Navigate to="/admin/dashboard" replace />
+            ) : (
+              <OrderSuccessPage />
+            )
+          }
+        />
+
+        <Route
+          path="/orders/:id"
+          element={
+            !isAuthed ? (
+              <Navigate to="/login" replace />
+            ) : user?.role === "admin" ? (
+              <Navigate to="/admin/dashboard" replace />
+            ) : (
+              <OrderDetailPage />
+            )
+          }
+        />
+        <Route
+          path="/admin/dashboard"
+          element={
+            !isAuthed ? (
+              <Navigate to="/login" replace />
+            ) : user?.role === "admin" ? (
+              <AdminDashboard />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          }
+        />
+
+        <Route
+          path="/profile"
+          element={
+            !isAuthed ? (
+              <Navigate to="/login" replace />
+            ) : user?.role === "admin" ? (
+              <Navigate to="/admin/dashboard" replace />
+            ) : (
+              <ProfilePage />
+            )
+          }
+        />
+        <Route path="*" element={<Navigate to={isAuthed ? defaultAuthedPath : "/"} replace />} />
+      </Routes>
+    </>
   );
 }
 

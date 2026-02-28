@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ShoppingCart } from "lucide-react";
+import { ShoppingCart, Star } from "lucide-react";
 import { useCartStore } from "../stores/cart.store";
 import { useToast } from "../context/useToast";
 
@@ -20,6 +20,28 @@ const getDisplayPrice = (p) => {
   return { original, sale, hasSale, final: hasSale ? sale : original };
 };
 
+const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
+
+const StarsRow = ({ value, size = 14 }) => {
+  const v = clamp(Number(value || 0), 0, 5);
+  return (
+    <div className="inline-flex items-center gap-0.5">
+      {Array.from({ length: 5 }).map((_, i) => {
+        const idx = i + 1;
+        const active = v >= idx - 0.35;
+        return (
+          <Star
+            key={idx}
+            size={size}
+            className={active ? "text-amber-500" : "text-gray-300"}
+            fill={active ? "currentColor" : "none"}
+          />
+        );
+      })}
+    </div>
+  );
+};
+
 const ProductCard = ({ product, showAddToCart = true, onAddToCart, className = "" }) => {
   const navigate = useNavigate();
   const addItem = useCartStore((s) => s.addItem);
@@ -29,6 +51,17 @@ const ProductCard = ({ product, showAddToCart = true, onAddToCart, className = "
 
   const imageUrl = product?.images?.main?.url || "";
   const { original, sale, hasSale, final } = useMemo(() => getDisplayPrice(product), [product]);
+
+  const discountPct = useMemo(() => {
+    if (!hasSale) return 0;
+    if (!Number.isFinite(original) || original <= 0) return 0;
+    if (!Number.isFinite(sale) || sale <= 0 || sale >= original) return 0;
+    const pct = Math.round(((original - sale) / original) * 100);
+    return clamp(pct, 1, 99);
+  }, [hasSale, original, sale]);
+
+  const ratingAvg = useMemo(() => clamp(Number(product?.ratingAvg || 0), 0, 5), [product]);
+  const ratingCount = useMemo(() => Math.max(0, Number(product?.ratingCount || 0)), [product]);
 
   const handleAdd = () => {
     const payload = {
@@ -65,6 +98,14 @@ const ProductCard = ({ product, showAddToCart = true, onAddToCart, className = "
           <div className="w-full h-full flex items-center justify-center text-gray-400 text-sm">No image</div>
         )}
 
+        {discountPct > 0 ? (
+          <div className="absolute top-3 left-3">
+            <span className="inline-flex items-center justify-center px-3 py-1 rounded-full bg-rose-500 text-white text-[11px] font-extrabold shadow-sm">
+              GIẢM {discountPct}%
+            </span>
+          </div>
+        ) : null}
+
         {showAddToCart ? (
           <div
             className={
@@ -85,17 +126,22 @@ const ProductCard = ({ product, showAddToCart = true, onAddToCart, className = "
       </div>
 
       <div className="p-4">
+        <div className="flex items-center gap-2 text-xs text-gray-500">
+          <StarsRow value={ratingAvg} />
+          <span>({ratingCount})</span>
+        </div>
+
         <button
           type="button"
           onClick={() => navigate(`/products/${encodeURIComponent(product?.slug || "")}`)}
-          className="text-left text-sm font-semibold text-gray-900 hover:text-teal-700 line-clamp-2"
+          className="mt-2 text-left text-sm font-semibold text-gray-900 hover:text-teal-700 line-clamp-2"
           title={product?.name || ""}
         >
           {product?.name || ""}
         </button>
 
         <div className="mt-3 flex items-end gap-2">
-          <div className="text-base font-extrabold text-gray-900">{formatMoneyVND(final)}</div>
+          <div className="text-base font-bold text-gray-900">{formatMoneyVND(final)}</div>
           {hasSale ? (
             <div className="text-xs text-gray-400 line-through pb-0.5">{formatMoneyVND(original)}</div>
           ) : null}
