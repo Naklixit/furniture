@@ -16,11 +16,19 @@ export const useAdminProducts = ({ enabled }) => {
   const [searchInput, setSearchInput] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
 
+  const [categoryId, setCategoryId] = useState("");
+
   const reqSeqRef = useRef(0);
   const lastFetchKeyRef = useRef("");
   const prevSearchRef = useRef("");
+  const prevCategoryRef = useRef("");
 
-  const refresh = async ({ search, page: nextPage, limit: nextLimit } = {}) => {
+  const refresh = async ({
+    search,
+    categoryId: nextCategoryId,
+    page: nextPage,
+    limit: nextLimit,
+  } = {}) => {
     const seq = (reqSeqRef.current += 1);
     setLoading(true);
     setError("");
@@ -28,6 +36,7 @@ export const useAdminProducts = ({ enabled }) => {
     try {
       const res = await listProductsApi({
         search: search ?? debouncedSearch,
+        categoryId: nextCategoryId ?? categoryId,
         page: nextPage ?? page,
         limit: nextLimit ?? limit,
         includeHidden: true,
@@ -65,9 +74,10 @@ export const useAdminProducts = ({ enabled }) => {
     if (!enabled) return;
 
     const searchChanged = prevSearchRef.current !== debouncedSearch;
-    const pageToFetch = searchChanged ? 1 : page;
+    const categoryChanged = prevCategoryRef.current !== categoryId;
+    const pageToFetch = searchChanged || categoryChanged ? 1 : page;
 
-    const key = `${debouncedSearch}|${pageToFetch}|${limit}`;
+    const key = `${debouncedSearch}|${categoryId}|${pageToFetch}|${limit}`;
     if (key === lastFetchKeyRef.current) return;
     lastFetchKeyRef.current = key;
 
@@ -75,15 +85,21 @@ export const useAdminProducts = ({ enabled }) => {
       prevSearchRef.current = debouncedSearch;
     }
 
-    refresh({ search: debouncedSearch, page: pageToFetch, limit });
+    if (categoryChanged) {
+      prevCategoryRef.current = categoryId;
+    }
+
+    refresh({ search: debouncedSearch, categoryId, page: pageToFetch, limit });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled, debouncedSearch, page, limit]);
+  }, [enabled, debouncedSearch, categoryId, page, limit]);
 
   const reset = () => {
     setSearchInput("");
     setDebouncedSearch("");
+    setCategoryId("");
     setPage(1);
     prevSearchRef.current = "";
+    prevCategoryRef.current = "";
     lastFetchKeyRef.current = "";
   };
 
@@ -109,6 +125,8 @@ export const useAdminProducts = ({ enabled }) => {
     totalPages,
     searchInput,
     setSearchInput,
+    categoryId,
+    setCategoryId,
     setPage,
     setLimit,
     refresh,

@@ -4,21 +4,8 @@ import AdminFormModal from "../components/AdminFormModal";
 import RoleSwitch from "../users/RoleSwitch";
 import { createCategoryApi, deleteCategoryApi, updateCategoryApi } from "../../../services/category.api";
 import { useAdminCategories } from "./useAdminCategories";
-
-const getPageNumbers = (page, totalPages) => {
-  const total = Math.max(1, totalPages || 1);
-  const current = Math.min(Math.max(1, page || 1), total);
-  const windowSize = 5;
-  const half = Math.floor(windowSize / 2);
-
-  let start = Math.max(1, current - half);
-  let end = Math.min(total, start + windowSize - 1);
-  start = Math.max(1, end - windowSize + 1);
-
-  const pages = [];
-  for (let i = start; i <= end; i += 1) pages.push(i);
-  return pages;
-};
+import { getPageNumbers } from "../shared/pagination";
+import { useResultsAnimKey } from "../shared/useResultsAnimKey";
 
 const emptyDraft = () => ({ name: "", slug: "", description: "", isActive: true });
 
@@ -26,17 +13,22 @@ const CategoriesManagementPanel = ({ toast }) => {
   const {
     loading,
     error,
+    dataVersion,
     items,
     page,
     limit,
+    total,
     totalPages,
     searchInput,
     setSearchInput,
     setPage,
+    setLimit,
     refresh,
     patchItem,
     reset,
   } = useAdminCategories({ enabled: true });
+
+  const resultsAnimKey = useResultsAnimKey(loading, dataVersion);
 
   const [busyId, setBusyId] = useState("");
 
@@ -200,24 +192,29 @@ const CategoriesManagementPanel = ({ toast }) => {
         </div>
 
         <div className="overflow-x-hidden">
-          <table className="w-full table-fixed">
-            <thead>
-              <tr className="bg-gray-50 text-gray-600 text-sm">
-                {columns.map((c) => (
-                  <th
-                    key={c}
-                    className={
-                      "text-left font-medium px-6 py-4 whitespace-nowrap " +
-                      (thClassByColumn[c] || "")
-                    }
-                  >
-                    {c}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className={"divide-y divide-gray-100 " + (loading ? "opacity-60" : "opacity-100")}
-            >
+          <div key={resultsAnimKey} className={!loading && !error ? "anim-fade-up" : ""}>
+            <table className="w-full table-fixed">
+              <thead>
+                <tr className="bg-gray-50 text-gray-600 text-sm">
+                  {columns.map((c) => (
+                    <th
+                      key={c}
+                      className={
+                        "text-left font-medium px-6 py-4 whitespace-nowrap " +
+                        (thClassByColumn[c] || "")
+                      }
+                    >
+                      {c}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody
+                className={
+                  "divide-y divide-gray-100 " +
+                  (loading ? "opacity-60" : "opacity-100")
+                }
+              >
               {loading ? (
                 <tr>
                   <td className="px-6 py-10 text-sm text-gray-500" colSpan={columns.length}>
@@ -284,42 +281,63 @@ const CategoriesManagementPanel = ({ toast }) => {
               )}
             </tbody>
           </table>
+          </div>
         </div>
 
-        <div className="px-6 py-4 flex items-center justify-end gap-2 bg-white">
-          <button
-            type="button"
-            className="w-9 h-9 rounded-md border border-gray-200 text-gray-600 hover:bg-gray-50"
-            aria-label="Trang trước"
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-            disabled={page <= 1}
-          >
-            ‹
-          </button>
-          {pageNumbers.map((p) => (
-            <button
-              key={p}
-              type="button"
-              className={
-                "w-9 h-9 rounded-md border " +
-                (p === page
-                  ? "border-blue-500 text-blue-700 font-semibold hover:bg-blue-50"
-                  : "border-gray-200 text-gray-600 hover:bg-gray-50")
-              }
-              onClick={() => setPage(p)}
+        <div className="px-6 py-4 flex items-center justify-between gap-3 bg-white">
+          <div className="text-sm text-gray-500">Tổng {Number(total || 0)} danh mục</div>
+
+          <div className="flex items-center gap-2">
+            <select
+              className="h-9 rounded-md border border-gray-200 text-sm text-gray-700 px-2 bg-white"
+              value={limit}
+              onChange={(e) => {
+                const next = Number(e.target.value) || 10;
+                setLimit(next);
+                setPage(1);
+              }}
+              aria-label="Số dòng mỗi trang"
             >
-              {p}
+              <option value={5}>5 / page</option>
+              <option value={10}>10 / page</option>
+              <option value={20}>20 / page</option>
+              <option value={50}>50 / page</option>
+            </select>
+
+            <button
+              type="button"
+              className="w-9 h-9 rounded-md border border-gray-200 text-gray-600 hover:bg-gray-50"
+              aria-label="Trang trước"
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page <= 1}
+            >
+              ‹
             </button>
-          ))}
-          <button
-            type="button"
-            className="w-9 h-9 rounded-md border border-gray-200 text-gray-600 hover:bg-gray-50"
-            aria-label="Trang sau"
-            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            disabled={page >= totalPages}
-          >
-            ›
-          </button>
+            {pageNumbers.map((p) => (
+              <button
+                key={p}
+                type="button"
+                className={
+                  "w-9 h-9 rounded-md border " +
+                  (p === page
+                    ? "border-blue-500 text-blue-700 font-semibold hover:bg-blue-50"
+                    : "border-gray-200 text-gray-600 hover:bg-gray-50")
+                }
+                onClick={() => setPage(p)}
+              >
+                {p}
+              </button>
+            ))}
+            <button
+              type="button"
+              className="w-9 h-9 rounded-md border border-gray-200 text-gray-600 hover:bg-gray-50"
+              aria-label="Trang sau"
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page >= totalPages}
+            >
+              ›
+            </button>
+          </div>
         </div>
       </div>
 

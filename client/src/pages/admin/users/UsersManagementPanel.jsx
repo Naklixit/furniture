@@ -1,10 +1,12 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { MapPin, Pencil, Phone, RotateCw, Search, Trash2, User as UserIcon } from "lucide-react";
 import { deleteUserApi, updateMeApi, updateUserRoleApi } from "../../../services/user.api";
 import { useAuth } from "../../../context/useAuth";
 import AdminFormModal from "../components/AdminFormModal";
 import RoleSwitch from "./RoleSwitch";
 import { useAdminUsers } from "./useAdminUsers";
+import { getPageNumbers } from "../shared/pagination";
+import { useResultsAnimKey } from "../shared/useResultsAnimKey";
 
 const formatDate = (iso) => {
   if (!iso) return "";
@@ -22,20 +24,6 @@ const formatDate = (iso) => {
 const roleLabel = (role) => (role === "admin" ? "Admin" : "User");
 const nextRoleForToggle = (role) => (role === "admin" ? "customer" : "admin");
 
-const getPageNumbers = (page, totalPages) => {
-  const total = Math.max(1, totalPages || 1);
-  const current = Math.min(Math.max(1, page || 1), total);
-  const windowSize = 5;
-  const half = Math.floor(windowSize / 2);
-
-  let start = Math.max(1, current - half);
-  let end = Math.min(total, start + windowSize - 1);
-  start = Math.max(1, end - windowSize + 1);
-
-  const pages = [];
-  for (let i = start; i <= end; i += 1) pages.push(i);
-  return pages;
-};
 
 const UsersManagementPanel = ({ currentUser, toast }) => {
   const { accessToken, login } = useAuth();
@@ -67,13 +55,7 @@ const UsersManagementPanel = ({ currentUser, toast }) => {
   const [editSaving, setEditSaving] = useState(false);
   const [editError, setEditError] = useState("");
 
-  const [resultsAnimKey, setResultsAnimKey] = useState(0);
-
-  useEffect(() => {
-    if (loading) return;
-    if (!dataVersion) return;
-    setResultsAnimKey((k) => k + 1);
-  }, [loading, dataVersion]);
+  const resultsAnimKey = useResultsAnimKey(loading, dataVersion);
 
   const editOpen = Boolean(editUser);
 

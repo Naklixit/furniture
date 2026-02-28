@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Pencil, RotateCw, Search, Trash2 } from "lucide-react";
+import { CalendarDays, CircleDollarSign, Pencil, RotateCw, Search, Tag, Trash2 } from "lucide-react";
 import AdminFormModal from "../components/AdminFormModal";
 import {
   createDiscountCodeApi,
@@ -7,11 +7,13 @@ import {
   updateDiscountCodeApi,
 } from "../../../services/discountCode.api";
 import { useAdminDiscountCodes } from "./useAdminDiscountCodes";
+import { getPageNumbers } from "../shared/pagination";
+import { useResultsAnimKey } from "../shared/useResultsAnimKey";
 
-const formatMoneyVND = (n) => {
+const formatNumber = (n) => {
   const v = Number(n || 0);
-  if (!Number.isFinite(v)) return "0đ";
-  return v.toLocaleString("vi-VN") + "đ";
+  if (!Number.isFinite(v)) return "0";
+  return v.toLocaleString("vi-VN");
 };
 
 const formatDateRange = (startsAt, endsAt) => {
@@ -26,9 +28,9 @@ const formatDateRange = (startsAt, endsAt) => {
   };
 
   if (!s && !e) return "—";
-  if (s && !e) return `${fmt(s)} ~`;
-  if (!s && e) return `~ ${fmt(e)}`;
-  return `${fmt(s)} ~ ${fmt(e)}`;
+  if (s && !e) return `${fmt(s)} -`;
+  if (!s && e) return `- ${fmt(e)}`;
+  return `${fmt(s)} - ${fmt(e)}`;
 };
 
 const toLocalDateInput = (value) => {
@@ -42,20 +44,6 @@ const toLocalDateInput = (value) => {
   return `${yyyy}-${mm}-${dd}`;
 };
 
-const getPageNumbers = (page, totalPages) => {
-  const total = Math.max(1, totalPages || 1);
-  const current = Math.min(Math.max(1, page || 1), total);
-  const windowSize = 5;
-  const half = Math.floor(windowSize / 2);
-
-  let start = Math.max(1, current - half);
-  let end = Math.min(total, start + windowSize - 1);
-  start = Math.max(1, end - windowSize + 1);
-
-  const pages = [];
-  for (let i = start; i <= end; i += 1) pages.push(i);
-  return pages;
-};
 
 const emptyDraft = () => ({
   code: "",
@@ -84,6 +72,7 @@ const DiscountCodesManagementPanel = ({ toast }) => {
   const {
     loading,
     error,
+    dataVersion,
     items,
     page,
     limit,
@@ -96,6 +85,8 @@ const DiscountCodesManagementPanel = ({ toast }) => {
     refresh,
     reset,
   } = useAdminDiscountCodes({ enabled: true });
+
+  const resultsAnimKey = useResultsAnimKey(loading, dataVersion);
 
   const [busyId, setBusyId] = useState("");
 
@@ -215,21 +206,7 @@ const DiscountCodesManagementPanel = ({ toast }) => {
 
   return (
     <>
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <div className="text-xl md:text-2xl font-extrabold text-gray-900">Quản lý mã giảm giá</div>
-          <div className="mt-1 text-sm text-gray-600">Quản lý các mã giảm giá trong cửa hàng</div>
-        </div>
-        <button
-          type="button"
-          className="h-10 px-4 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold"
-          onClick={openCreate}
-        >
-          + Thêm mã giảm giá
-        </button>
-      </div>
-
-      <div className="mt-6 bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
+      <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
         <div className="px-6 py-4 flex items-center justify-between gap-3">
           <div className="relative w-full max-w-[360px]">
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -256,11 +233,19 @@ const DiscountCodesManagementPanel = ({ toast }) => {
             >
               <RotateCw size={16} />
             </button>
+            <button
+              type="button"
+              className="h-10 px-4 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold"
+              onClick={openCreate}
+            >
+              + Thêm mã giảm giá
+            </button>
           </div>
         </div>
 
         <div className="overflow-x-hidden">
-          <table className="w-full table-fixed">
+          <div key={resultsAnimKey} className={!loading && !error ? "anim-fade-up" : ""}>
+            <table className="w-full table-fixed">
             <thead>
               <tr className="bg-gray-50 text-gray-600 text-sm">
                 {columns.map((c) => (
@@ -277,135 +262,150 @@ const DiscountCodesManagementPanel = ({ toast }) => {
               </tr>
             </thead>
             <tbody className={"divide-y divide-gray-100 " + (loading ? "opacity-60" : "opacity-100")}>
-              {error ? (
+              {loading ? (
                 <tr>
-                  <td className="px-6 py-6 text-sm text-red-600" colSpan={columns.length}>
+                  <td className="px-6 py-10 text-sm text-gray-500" colSpan={columns.length}>
+                    Đang tải...
+                  </td>
+                </tr>
+              ) : error ? (
+                <tr>
+                  <td className="px-6 py-10 text-sm text-red-600" colSpan={columns.length}>
                     {error}
                   </td>
                 </tr>
-              ) : null}
-
-              {!error && (items || []).length === 0 ? (
+              ) : (items || []).length === 0 ? (
                 <tr>
                   <td className="px-6 py-10 text-sm text-gray-500" colSpan={columns.length}>
-                    Không có mã giảm giá.
+                    Không có mã giảm giá phù hợp.
                   </td>
                 </tr>
-              ) : null}
-
-              {(items || []).map((row) => {
-                const disabled = busyId === (row?.id || "");
-                return (
-                  <tr key={row.id} className="text-sm text-gray-800">
-                    <td className="px-6 py-4">
-                      <div className="font-bold text-blue-700 underline underline-offset-2">{row?.code || ""}</div>
-                      {!row?.isActive ? (
-                        <div className="mt-1 text-xs text-gray-500">Đang tắt</div>
-                      ) : null}
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="inline-flex items-center h-6 px-2 rounded-md bg-orange-100 text-orange-700 font-bold">
-                        {Number(row?.percentOff || 0)}%
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-gray-900">{Number(row?.remainingUses || 0)} lượt sử dụng</div>
-                    </td>
-                    <td className="px-6 py-4 text-gray-700">{formatDateRange(row?.startsAt, row?.endsAt)}</td>
-                    <td className="px-6 py-4">
-                      <div className="text-gray-900 font-semibold">{formatMoneyVND(row?.minOrderValue || 0)}</div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          className={
-                            "w-10 h-10 rounded-lg border flex items-center justify-center " +
-                            (disabled ? "opacity-60" : "hover:bg-blue-50")
-                          }
-                          onClick={() => openEdit(row)}
-                          disabled={disabled}
-                          title="Sửa"
-                        >
-                          <Pencil size={16} className="text-blue-600" />
-                        </button>
-                        <button
-                          type="button"
-                          className={
-                            "w-10 h-10 rounded-lg border flex items-center justify-center " +
-                            (disabled ? "opacity-60" : "hover:bg-red-50")
-                          }
-                          onClick={() => onDelete(row)}
-                          disabled={disabled}
-                          title="Xoá"
-                        >
-                          <Trash2 size={16} className="text-red-600" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
+              ) : (
+                (items || []).map((row) => {
+                  const disabled = busyId && String(busyId) === String(row?.id);
+                  return (
+                    <tr key={row.id} className={disabled ? "opacity-60" : "opacity-100"}>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2">
+                          <span className="w-6 h-6 rounded-md bg-blue-50 text-blue-700 inline-flex items-center justify-center">
+                            <Tag size={14} />
+                          </span>
+                          <div className="text-sm font-semibold text-gray-900">
+                            {row?.code || ""}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="inline-flex items-center h-6 px-2 rounded-md bg-orange-100 text-orange-700 font-bold">
+                          {Number(row?.percentOff || 0)}%
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="text-gray-800">{Number(row?.remainingUses || 0)} lượt sử dụng</div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2 text-gray-700">
+                          <CalendarDays size={16} className="text-gray-400" />
+                          <span>{formatDateRange(row?.startsAt, row?.endsAt)}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2 text-emerald-700 font-semibold">
+                          <CircleDollarSign size={16} className="text-emerald-600" />
+                          <span>{formatNumber(row?.minOrderValue || 0)}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <button
+                            type="button"
+                            className="text-gray-700 hover:text-blue-700"
+                            onClick={() => openEdit(row)}
+                            disabled={disabled}
+                            title="Sửa"
+                          >
+                            <Pencil size={16} />
+                          </button>
+                          <button
+                            type="button"
+                            className="text-gray-700 hover:text-red-600"
+                            onClick={() => onDelete(row)}
+                            disabled={disabled}
+                            title="Xoá"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
-          </table>
+            </table>
+          </div>
         </div>
 
-        <div className="px-6 py-4 flex items-center justify-end gap-3 bg-white">
-          <div className="text-sm text-gray-600">Tổng cộng {Number(total || 0)} mã giảm giá</div>
-          <button
-            type="button"
-            className="w-9 h-9 rounded-md border border-gray-200 text-gray-600 hover:bg-gray-50"
-            aria-label="Trang trước"
-            onClick={() => setPage(Math.max(1, page - 1))}
-            disabled={page <= 1}
-          >
-            ‹
-          </button>
+        <div className="px-6 py-4 flex items-center justify-between gap-3 bg-white">
+          <div className="text-sm text-gray-500">Tổng {Number(total || 0)} mã giảm giá</div>
 
-          {pageNumbers.map((p) => {
-            const active = p === page;
-            return (
-              <button
-                key={p}
-                type="button"
-                className={
-                  "w-9 h-9 rounded-md border text-sm font-semibold " +
-                  (active
-                    ? "border-blue-500 text-blue-700 hover:bg-blue-50"
-                    : "border-gray-200 text-gray-700 hover:bg-gray-50")
-                }
-                onClick={() => setPage(p)}
-              >
-                {p}
-              </button>
-            );
-          })}
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              className="w-9 h-9 rounded-md border border-gray-200 text-gray-600 hover:bg-gray-50"
+              aria-label="Trang trước"
+              onClick={() => setPage(Math.max(1, page - 1))}
+              disabled={page <= 1}
+            >
+              ‹
+            </button>
 
-          <button
-            type="button"
-            className="w-9 h-9 rounded-md border border-gray-200 text-gray-600 hover:bg-gray-50"
-            aria-label="Trang sau"
-            onClick={() => setPage(Math.min(totalPages || 1, page + 1))}
-            disabled={page >= (totalPages || 1)}
-          >
-            ›
-          </button>
+            {pageNumbers.map((p) => {
+              const active = p === page;
+              return (
+                <button
+                  key={p}
+                  type="button"
+                  className={
+                    "w-9 h-9 rounded-md border text-sm font-semibold " +
+                    (active
+                      ? "border-blue-500 text-blue-700 hover:bg-blue-50"
+                      : "border-gray-200 text-gray-700 hover:bg-gray-50")
+                  }
+                  onClick={() => setPage(p)}
+                >
+                  {p}
+                </button>
+              );
+            })}
 
-          <select
-            className="h-9 rounded-md border border-gray-200 bg-white text-sm px-2"
-            value={limit}
-            onChange={(e) => {
-              const v = Number(e.target.value || 10);
-              setLimit(v);
-              setPage(1);
-            }}
-          >
-            {[5, 10, 20, 50].map((n) => (
-              <option key={n} value={n}>
-                {n} / page
-              </option>
-            ))}
-          </select>
+            <button
+              type="button"
+              className="w-9 h-9 rounded-md border border-gray-200 text-gray-600 hover:bg-gray-50"
+              aria-label="Trang sau"
+              onClick={() => setPage(Math.min(totalPages || 1, page + 1))}
+              disabled={page >= (totalPages || 1)}
+            >
+              ›
+            </button>
+
+            <select
+              className="h-9 rounded-md border border-gray-200 text-sm text-gray-700 px-2 bg-white"
+              value={limit}
+              onChange={(e) => {
+                const v = Number(e.target.value || 10);
+                setLimit(v);
+                setPage(1);
+              }}
+              aria-label="Số dòng mỗi trang"
+            >
+              {[5, 10, 20, 50].map((n) => (
+                <option key={n} value={n}>
+                  {n} / page
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 

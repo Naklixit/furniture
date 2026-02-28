@@ -10,6 +10,8 @@ import {
   uploadProductImagesApi,
 } from "../../../services/product.api";
 import { useAdminProducts } from "./useAdminProducts";
+import { getPageNumbers } from "../shared/pagination";
+import { useResultsAnimKey } from "../shared/useResultsAnimKey";
 
 const formatMoneyVND = (n) => {
   const v = Number(n || 0);
@@ -51,20 +53,6 @@ const uniqBySignature = (files) => {
   return out;
 };
 
-const getPageNumbers = (page, totalPages) => {
-  const total = Math.max(1, totalPages || 1);
-  const current = Math.min(Math.max(1, page || 1), total);
-  const windowSize = 5;
-  const half = Math.floor(windowSize / 2);
-
-  let start = Math.max(1, current - half);
-  let end = Math.min(total, start + windowSize - 1);
-  start = Math.max(1, end - windowSize + 1);
-
-  const pages = [];
-  for (let i = start; i <= end; i += 1) pages.push(i);
-  return pages;
-};
 
 const defaultExtraRow = () => ({ key: "", value: "" });
 
@@ -129,6 +117,8 @@ const ProductsManagementPanel = ({ toast }) => {
     totalPages,
     searchInput,
     setSearchInput,
+    categoryId,
+    setCategoryId,
     setPage,
     refresh,
     patchItem,
@@ -152,13 +142,7 @@ const ProductsManagementPanel = ({ toast }) => {
   const [mainPreviewUrl, setMainPreviewUrl] = useState("");
   const [galleryPreviewUrls, setGalleryPreviewUrls] = useState([]);
 
-  const [resultsAnimKey, setResultsAnimKey] = useState(0);
-
-  useEffect(() => {
-    if (loading) return;
-    if (!dataVersion) return;
-    setResultsAnimKey((k) => k + 1);
-  }, [loading, dataVersion]);
+  const resultsAnimKey = useResultsAnimKey(loading, dataVersion);
 
   const openCreate = () => {
     setModalMode("create");
@@ -462,15 +446,54 @@ const ProductsManagementPanel = ({ toast }) => {
     <>
       <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
         <div className="px-6 py-4 flex items-center justify-between gap-3">
-          <div className="relative w-full max-w-[360px]">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input
-              type="text"
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              placeholder="Tìm kiếm sản phẩm..."
-              className="w-full h-10 pl-9 pr-3 rounded-lg border border-gray-200 bg-white text-sm outline-none focus:border-gray-300"
-            />
+          <div className="flex items-center gap-3 w-full min-w-0">
+            <div className="relative w-full max-w-[360px] shrink-0">
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                placeholder="Tìm kiếm sản phẩm..."
+                className="w-full h-10 pl-9 pr-3 rounded-lg border border-gray-200 bg-white text-sm outline-none focus:border-gray-300"
+              />
+            </div>
+
+            <div className="hidden md:flex items-center gap-2 min-w-0 overflow-x-auto">
+              <button
+                type="button"
+                className={
+                  "h-9 px-3 rounded-full border text-sm font-semibold whitespace-nowrap " +
+                  (!categoryId
+                    ? "border-blue-200 bg-blue-50 text-blue-700"
+                    : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50")
+                }
+                onClick={() => setCategoryId("")}
+              >
+                Tất cả
+              </button>
+
+              {(categories || []).map((c) => {
+                const active = String(categoryId || "") === String(c?.id || "");
+                return (
+                  <button
+                    key={c.id}
+                    type="button"
+                    className={
+                      "h-9 px-3 rounded-full border text-sm font-semibold whitespace-nowrap " +
+                      (active
+                        ? "border-blue-200 bg-blue-50 text-blue-700"
+                        : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50")
+                    }
+                    onClick={() => {
+                      setCategoryId(active ? "" : c.id);
+                    }}
+                    title={c?.name || ""}
+                  >
+                    {c?.name || ""}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           {loading && <div className="hidden md:block text-sm text-gray-500">Đang tải...</div>}
@@ -482,7 +505,7 @@ const ProductsManagementPanel = ({ toast }) => {
               aria-label="Làm mới"
               onClick={() => {
                 reset();
-                refresh({ search: "", page: 1, limit });
+                refresh({ search: "", categoryId: "", page: 1, limit });
               }}
             >
               <RotateCw size={16} />

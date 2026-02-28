@@ -35,6 +35,17 @@ const mapLimit = async (arr, limit, mapper) => {
 const escapeRegex = (value) =>
   String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
+const normalizeName = (value) => {
+  if (typeof value !== "string") return "";
+  return value.trim().replace(/\s+/g, " ");
+};
+
+const buildNameExactRegex = (normalizedName) => {
+  const escaped = escapeRegex(normalizedName);
+  const wsLoose = escaped.replace(/ /g, "\\s+");
+  return new RegExp(`^${wsLoose}$`, "i");
+};
+
 const parsePositiveInt = (value, fallback) => {
   const n = Number.parseInt(value, 10);
   if (!Number.isFinite(n) || n <= 0) return fallback;
@@ -258,9 +269,15 @@ const validateSpecs = (body) => {
 
 const createProduct = async (req, res, next) => {
   try {
-    const name = typeof req.body?.name === "string" ? req.body.name.trim() : "";
+    const name = normalizeName(req.body?.name);
     if (!name)
       return res.status(400).json({ message: "Tên sản phẩm là bắt buộc" });
+
+    const nameRx = buildNameExactRegex(name);
+    const existsName = await Product.findOne({ name: nameRx }).select("_id");
+    if (existsName) {
+      return res.status(409).json({ message: "Tên sản phẩm đã tồn tại" });
+    }
 
     const categoryId =
       typeof req.body?.categoryId === "string"
@@ -345,6 +362,9 @@ const createProduct = async (req, res, next) => {
     });
   } catch (err) {
     if (err && err.code === 11000) {
+      if (err?.keyPattern?.name) {
+        return res.status(409).json({ message: "Tên sản phẩm đã tồn tại" });
+      }
       return res.status(409).json({ message: "Slug đã tồn tại" });
     }
     return next(err);
@@ -362,8 +382,18 @@ const updateProduct = async (req, res, next) => {
     const updates = {};
 
     if (typeof req.body?.name === "string") {
-      const name = req.body.name.trim();
-      if (name) updates.name = name;
+      const name = normalizeName(req.body.name);
+      if (name) {
+        const nameRx = buildNameExactRegex(name);
+        const existsName = await Product.findOne({
+          _id: { $ne: p._id },
+          name: nameRx,
+        }).select("_id");
+        if (existsName) {
+          return res.status(409).json({ message: "Tên sản phẩm đã tồn tại" });
+        }
+        updates.name = name;
+      }
     }
 
     if (typeof req.body?.categoryId === "string") {
@@ -489,6 +519,9 @@ const updateProduct = async (req, res, next) => {
     });
   } catch (err) {
     if (err && err.code === 11000) {
+      if (err?.keyPattern?.name) {
+        return res.status(409).json({ message: "Tên sản phẩm đã tồn tại" });
+      }
       return res.status(409).json({ message: "Slug đã tồn tại" });
     }
     return next(err);

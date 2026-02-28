@@ -79,7 +79,7 @@ const AdminLayout = ({
       </aside>
 
       <div className="flex-1 min-w-0 h-full flex flex-col overflow-hidden">
-        <header className="h-16 bg-white border-b-2 border-gray-300 flex items-center justify-between px-4 md:px-6">
+        <header className="relative z-40 h-16 bg-white border-b-2 border-gray-300 flex items-center justify-between px-4 md:px-6">
           <div className="flex items-center gap-3">
             <button
               type="button"
@@ -110,7 +110,7 @@ const AdminLayout = ({
             </button>
 
             {profileOpen && (
-              <div className="absolute right-0 mt-2 w-64 bg-white border border-gray-200 rounded-2xl shadow-lg overflow-hidden">
+              <div className="absolute right-0 mt-2 w-64 z-50 bg-white border border-gray-200 rounded-2xl shadow-lg overflow-hidden">
                 <div className="px-4 py-4">
                   <div className="text-sm font-semibold text-gray-800 truncate">{displayName}</div>
                   <div className="mt-1 text-xs text-gray-500 truncate">{email || ""}</div>
@@ -129,7 +129,7 @@ const AdminLayout = ({
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-4 md:p-8">
+        <main className="relative z-0 flex-1 overflow-y-auto p-4 md:p-8">
           <div className="max-w-[1200px]">{children}</div>
         </main>
       </div>

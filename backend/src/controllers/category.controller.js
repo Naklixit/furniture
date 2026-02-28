@@ -4,6 +4,17 @@ const { slugify } = require("../utils/slug");
 const escapeRegex = (value) =>
   String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
+const normalizeName = (value) => {
+  if (typeof value !== "string") return "";
+  return value.trim().replace(/\s+/g, " ");
+};
+
+const buildNameExactRegex = (normalizedName) => {
+  const escaped = escapeRegex(normalizedName);
+  const wsLoose = escaped.replace(/ /g, "\\s+");
+  return new RegExp(`^${wsLoose}$`, "i");
+};
+
 const parsePositiveInt = (value, fallback) => {
   const n = Number.parseInt(value, 10);
   if (!Number.isFinite(n) || n <= 0) return fallback;
@@ -80,9 +91,15 @@ const listCategories = async (req, res, next) => {
 
 const createCategory = async (req, res, next) => {
   try {
-    const name = typeof req.body?.name === "string" ? req.body.name.trim() : "";
+    const name = normalizeName(req.body?.name);
     if (!name)
       return res.status(400).json({ message: "Tên danh mục là bắt buộc" });
+
+    const nameRx = buildNameExactRegex(name);
+    const existsName = await Category.findOne({ name: nameRx }).select("_id");
+    if (existsName) {
+      return res.status(409).json({ message: "Tên danh mục đã tồn tại" });
+    }
 
     const slugInput =
       typeof req.body?.slug === "string" ? req.body.slug.trim() : "";
@@ -119,6 +136,9 @@ const createCategory = async (req, res, next) => {
     });
   } catch (err) {
     if (err && err.code === 11000) {
+      if (err?.keyPattern?.name) {
+        return res.status(409).json({ message: "Tên danh mục đã tồn tại" });
+      }
       return res.status(409).json({ message: "Slug đã tồn tại" });
     }
     return next(err);
@@ -136,8 +156,18 @@ const updateCategory = async (req, res, next) => {
     const updates = {};
 
     if (typeof req.body?.name === "string") {
-      const name = req.body.name.trim();
-      if (name) updates.name = name;
+      const name = normalizeName(req.body.name);
+      if (name) {
+        const nameRx = buildNameExactRegex(name);
+        const existsName = await Category.findOne({
+          _id: { $ne: c._id },
+          name: nameRx,
+        }).select("_id");
+        if (existsName) {
+          return res.status(409).json({ message: "Tên danh mục đã tồn tại" });
+        }
+        updates.name = name;
+      }
     }
 
     if (typeof req.body?.slug === "string") {
@@ -184,6 +214,9 @@ const updateCategory = async (req, res, next) => {
     });
   } catch (err) {
     if (err && err.code === 11000) {
+      if (err?.keyPattern?.name) {
+        return res.status(409).json({ message: "Tên danh mục đã tồn tại" });
+      }
       return res.status(409).json({ message: "Slug đã tồn tại" });
     }
     return next(err);

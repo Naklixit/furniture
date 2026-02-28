@@ -5,6 +5,8 @@ export const useAdminCategories = ({ enabled }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  const [dataVersion, setDataVersion] = useState(0);
+
   const [items, setItems] = useState([]);
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
@@ -38,6 +40,7 @@ export const useAdminCategories = ({ enabled }) => {
       setTotalPages(res?.meta?.totalPages || 1);
       setPage(res?.meta?.page || (nextPage ?? page) || 1);
       setLimit(res?.meta?.limit || (nextLimit ?? limit) || 10);
+      setDataVersion((v) => v + 1);
     } catch (err) {
       if (seq !== reqSeqRef.current) return;
       setError(err?.message || "Không thể tải danh sách danh mục");
@@ -98,6 +101,7 @@ export const useAdminCategories = ({ enabled }) => {
   return {
     loading,
     error,
+    dataVersion,
     items,
     page,
     limit,

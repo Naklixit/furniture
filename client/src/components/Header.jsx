@@ -4,6 +4,17 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../context/useAuth";
 import { logoutApi } from "../services/auth.api";
 import { useCartStore } from "../stores/cart.store";
+import { listProductsApi } from "../services/product.api";
+
+const formatMoneyVND = (n) => {
+  const v = Number(n || 0);
+  if (!Number.isFinite(v)) return "0đ";
+  try {
+    return v.toLocaleString("vi-VN") + "đ";
+  } catch {
+    return String(v) + "đ";
+  }
+};
 
 function Header() {
   const navigate = useNavigate();
@@ -12,6 +23,16 @@ function Header() {
   const [open, setOpen] = useState(false);
   const menuRef = useRef(null);
   const [searchQuery, setSearchQuery] = useState("");
+
+  const searchRef = useRef(null);
+  const inputRef = useRef(null);
+  const [searchFocused, setSearchFocused] = useState(false);
+  const [suggestOpen, setSuggestOpen] = useState(false);
+  const [suggestLoading, setSuggestLoading] = useState(false);
+  const [suggestError, setSuggestError] = useState("");
+  const [suggestItems, setSuggestItems] = useState([]);
+  const [highlightIdx, setHighlightIdx] = useState(-1);
+  const reqSeqRef = useRef(0);
 
   const displayName = useMemo(() => {
     return user?.fullName || user?.email || "Tài khoản";
@@ -31,6 +52,63 @@ function Header() {
     document.addEventListener("mousedown", onDocClick);
     return () => document.removeEventListener("mousedown", onDocClick);
   }, [open]);
+
+  useEffect(() => {
+    const onDocClick = (e) => {
+      if (!suggestOpen) return;
+      const el = searchRef.current;
+      if (!el) return;
+      if (el.contains(e.target)) return;
+      setSuggestOpen(false);
+      setHighlightIdx(-1);
+    };
+    document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, [suggestOpen]);
+
+  useEffect(() => {
+    const q = String(searchQuery || "").trim();
+    const shouldQuery = q.length >= 2;
+
+    setSuggestError("");
+    setHighlightIdx(-1);
+
+    if (!shouldQuery) {
+      setSuggestItems([]);
+      if (!searchFocused) setSuggestOpen(false);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      const seq = (reqSeqRef.current += 1);
+      setSuggestLoading(true);
+      setSuggestError("");
+
+      try {
+        const res = await listProductsApi({
+          search: q,
+          page: 1,
+          limit: 6,
+          includeHidden: false,
+          sort: "new",
+        });
+        if (seq !== reqSeqRef.current) return;
+        const items = Array.isArray(res?.items) ? res.items : [];
+        setSuggestItems(items);
+        if (searchFocused) setSuggestOpen(true);
+      } catch (err) {
+        if (seq !== reqSeqRef.current) return;
+        setSuggestItems([]);
+        setSuggestError(err?.message || "Không thể tìm kiếm");
+        if (searchFocused) setSuggestOpen(true);
+      } finally {
+        if (seq !== reqSeqRef.current) return;
+        setSuggestLoading(false);
+      }
+    }, 250);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery, searchFocused]);
 
   const handleLogout = async () => {
     try {
@@ -52,11 +130,33 @@ function Header() {
     if (q) params.set("q", q);
 
     const qs = params.toString();
+    setSuggestOpen(false);
+    setHighlightIdx(-1);
     navigate(qs ? `/products?${qs}` : "/products");
   };
 
+  const goToAllResults = (q) => {
+    const keyword = String(q || "").trim();
+    const params = new URLSearchParams();
+    if (keyword) params.set("q", keyword);
+    const qs = params.toString();
+    setSuggestOpen(false);
+    setHighlightIdx(-1);
+    inputRef.current?.blur?.();
+    navigate(qs ? `/products?${qs}` : "/products");
+  };
+
+  const goToProduct = (slug) => {
+    const s = String(slug || "").trim();
+    if (!s) return;
+    setSuggestOpen(false);
+    setHighlightIdx(-1);
+    inputRef.current?.blur?.();
+    navigate(`/products/${encodeURIComponent(s)}`);
+  };
+
   return (
-    <header className="w-full border-g bg-white/90 backdrop-blur supports-[backdrop-filter]:bg-white/70 sticky top-0 z-40">
+    <header className="w-full border-b border-gray-200 bg-white/90 backdrop-blur supports-[backdrop-filter]:bg-white/70 sticky top-0 z-40">
       <div className="max-w-7xl mx-auto px-6 flex items-center justify-between h-20 gap-8">
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2 shrink-0" aria-label="Trang chủ">
@@ -73,16 +173,134 @@ function Header() {
           className="hidden md:flex items-center h-10 flex-1 basis-0 mx-6 min-w-[260px] max-w-[360px] lg:max-w-[440px] xl:max-w-[520px]"
           onSubmit={handleSearchSubmit}
         >
-          <div className="relative w-full h-full">
+          <div ref={searchRef} className="relative w-full h-full">
             <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
+              ref={inputRef}
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              onFocus={() => {
+                setSearchFocused(true);
+                const q = String(searchQuery || "").trim();
+                if (q.length >= 2) setSuggestOpen(true);
+              }}
+              onBlur={() => {
+                setSearchFocused(false);
+              }}
+              onKeyDown={(e) => {
+                if (!suggestOpen) {
+                  if (e.key === "Escape") {
+                    setSuggestOpen(false);
+                    setHighlightIdx(-1);
+                  }
+                  return;
+                }
+
+                if (e.key === "Escape") {
+                  e.preventDefault();
+                  setSuggestOpen(false);
+                  setHighlightIdx(-1);
+                  return;
+                }
+
+                if (e.key === "ArrowDown") {
+                  e.preventDefault();
+                  const max = (suggestItems || []).length;
+                  if (max <= 0) return;
+                  setHighlightIdx((prev) => {
+                    const next = prev + 1;
+                    return next >= max ? 0 : next;
+                  });
+                  return;
+                }
+
+                if (e.key === "ArrowUp") {
+                  e.preventDefault();
+                  const max = (suggestItems || []).length;
+                  if (max <= 0) return;
+                  setHighlightIdx((prev) => {
+                    const next = prev - 1;
+                    return next < 0 ? max - 1 : next;
+                  });
+                  return;
+                }
+
+                if (e.key === "Enter") {
+                  if (highlightIdx >= 0 && (suggestItems || [])[highlightIdx]) {
+                    e.preventDefault();
+                    goToProduct((suggestItems[highlightIdx] || {})?.slug);
+                    return;
+                  }
+                  // default: submit -> go to all results
+                }
+              }}
               placeholder="Tìm kiếm sản phẩm, thương hiệu..."
               aria-label="Tìm kiếm"
               className="w-full h-full pl-11 pr-4 text-sm outline-none bg-gray-100/80 border border-gray-200 rounded-full placeholder:text-gray-400 focus:bg-white focus:border-gray-300 transition"
             />
+
+            {suggestOpen && (String(searchQuery || "").trim().length >= 2) ? (
+              <div className="absolute left-0 right-0 top-[calc(100%+10px)] bg-white border border-gray-200 rounded-2xl shadow-xl overflow-hidden z-50">
+                <div className="max-h-[360px] overflow-auto">
+                  {suggestLoading ? (
+                    <div className="px-4 py-4 text-sm text-gray-600">Đang tìm kiếm...</div>
+                  ) : suggestError ? (
+                    <div className="px-4 py-4 text-sm text-red-600">{suggestError}</div>
+                  ) : (suggestItems || []).length === 0 ? (
+                    <div className="px-4 py-4 text-sm text-gray-600">Không có kết quả phù hợp.</div>
+                  ) : (
+                    <ul className="py-2">
+                      {(suggestItems || []).map((p, idx) => {
+                        const active = idx === highlightIdx;
+                        const imgUrl = p?.images?.main?.url || "";
+                        const name = p?.name || "";
+                        const price = p?.salePrice ?? p?.originalPrice ?? 0;
+                        return (
+                          <li key={p?.id || `${p?.slug || ""}-${idx}`}> 
+                            <button
+                              type="button"
+                              className={
+                                "w-full flex items-center gap-3 px-4 py-2.5 text-left transition " +
+                                (active ? "bg-teal-50" : "hover:bg-gray-50")
+                              }
+                              onMouseEnter={() => setHighlightIdx(idx)}
+                              onMouseDown={(e) => {
+                                // keep focus until navigation
+                                e.preventDefault();
+                              }}
+                              onClick={() => goToProduct(p?.slug)}
+                            >
+                              <span className="w-9 h-9 rounded-lg bg-gray-100 overflow-hidden shrink-0 flex items-center justify-center">
+                                {imgUrl ? (
+                                  <img src={imgUrl} alt={name} className="w-full h-full object-cover" />
+                                ) : (
+                                  <span className="text-gray-400 text-xs">No</span>
+                                )}
+                              </span>
+                              <span className="min-w-0 flex-1">
+                                <span className="block text-sm font-semibold text-gray-900 truncate">{name}</span>
+                                <span className="block text-xs font-bold text-teal-700">{formatMoneyVND(price)}</span>
+                              </span>
+                            </button>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                </div>
+
+                <button
+                  type="button"
+                  className="w-full flex items-center gap-2 px-4 py-3 border-t border-gray-100 text-sm font-semibold text-teal-700 hover:bg-gray-50"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => goToAllResults(searchQuery)}
+                >
+                  <Search size={16} className="text-teal-700" />
+                  Xem tất cả kết quả cho "{String(searchQuery || "").trim()}"
+                </button>
+              </div>
+            ) : null}
           </div>
         </form>
 
