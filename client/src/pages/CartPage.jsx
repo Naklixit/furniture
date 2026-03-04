@@ -5,6 +5,7 @@ import Footer from "../components/Footer";
 import { useCartStore } from "../stores/cart.store";
 import { useToast } from "../context/useToast";
 import { validateDiscountCodeApi } from "../services/discountCode.api";
+import { getProductByIdApi } from "../services/product.api";
 import { ShieldCheck, Trash2, Truck } from "lucide-react";
 import { useAuth } from "../context/useAuth";
 
@@ -30,6 +31,9 @@ export default function CartPage() {
   const incQty = useCartStore((s) => s.incQty);
   const clear = useCartStore((s) => s.clear);
 
+  const [stockById, setStockById] = useState({});
+  const [stockLoading, setStockLoading] = useState(false);
+
   const [discountInput, setDiscountInput] = useState("");
   const [applying, setApplying] = useState(false);
 
@@ -42,6 +46,90 @@ export default function CartPage() {
     clear?.();
     toast?.info?.("Đã xoá tất cả sản phẩm trong giỏ hàng");
   };
+
+  const itemsKey = useMemo(() => {
+    return (items || [])
+      .map((it) => String(it?.productId || ""))
+      .filter(Boolean)
+      .sort()
+      .join("|");
+  }, [items]);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const run = async () => {
+      const ids = (items || [])
+        .map((it) => String(it?.productId || ""))
+        .filter(Boolean);
+      if (!ids.length) {
+        setStockById({});
+        return;
+      }
+
+      try {
+        setStockLoading(true);
+        const results = await Promise.all(
+          ids.map(async (id) => {
+            try {
+              const res = await getProductByIdApi(id);
+              const p = res?.product;
+              const stock = Math.max(0, Number(p?.stock || 0));
+              return [id, { ok: true, stock, name: p?.name || "" }];
+            } catch (e) {
+              return [id, { ok: false, stock: null, name: "", error: e?.message || "" }];
+            }
+          }),
+        );
+
+        if (!mounted) return;
+
+        const nextMap = {};
+        results.forEach(([id, v]) => {
+          nextMap[id] = v;
+        });
+        setStockById((prev) => ({ ...(prev || {}), ...nextMap }));
+
+        // Clamp quantities if stock changed
+        results.forEach(([id, v]) => {
+          if (!v?.ok) return;
+          const s = Math.max(0, Number(v.stock || 0));
+          const it = (items || []).find((x) => String(x?.productId) === String(id));
+          const qty = Math.max(1, Number(it?.qty || 1));
+
+          if (s <= 0) {
+            removeItem?.(id);
+            toast?.error?.(`Sản phẩm "${it?.name || ""}" đã hết hàng và đã được xoá khỏi giỏ.`);
+            return;
+          }
+          if (qty > s) {
+            setQty?.(id, s);
+            toast?.info?.(`"${it?.name || ""}" chỉ còn ${s} sản phẩm. Giỏ hàng đã được cập nhật.`);
+          }
+        });
+      } finally {
+        if (!mounted) return;
+        setStockLoading(false);
+      }
+    };
+
+    run();
+    return () => {
+      mounted = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [itemsKey]);
+
+  const hasStockIssue = useMemo(() => {
+    return (items || []).some((it) => {
+      const id = String(it?.productId || "");
+      const qty = Math.max(1, Number(it?.qty || 1));
+      const entry = stockById?.[id];
+      if (!entry || entry.stock == null) return false;
+      const s = Math.max(0, Number(entry.stock || 0));
+      return s <= 0 || qty > s;
+    });
+  }, [items, stockById]);
 
   const total = useMemo(() => {
     return (items || []).reduce((sum, it) => {
@@ -164,6 +252,11 @@ export default function CartPage() {
                   {items.map((it) => {
                     const qty = Math.max(1, Number(it?.qty || 1));
                     const lineTotal = Math.max(0, Number(it?.price || 0)) * qty;
+                    const stockEntry = stockById?.[String(it.productId)];
+                    const stock = stockEntry?.stock;
+                    const stockKnown = typeof stock === "number" && Number.isFinite(stock);
+                    const maxQty = stockKnown ? Math.max(0, stock) : null;
+                    const canInc = stockKnown ? qty < Math.max(1, maxQty) : true;
                     return (
                       <div key={it.productId} className="p-4 flex gap-4 group transition-colors duration-200 hover:bg-gray-50/60">
                         <button
@@ -216,19 +309,45 @@ export default function CartPage() {
                               </button>
                               <input
                                 value={qty}
-                                onChange={(e) => setQty?.(it.productId, e.target.value)}
+                                onChange={(e) => {
+                                  const raw = String(e.target.value || "").trim();
+                                  const n = Math.max(1, Math.floor(Number(raw || 1)));
+                                  if (!Number.isFinite(n)) return;
+                                  if (stockKnown) {
+                                    const clamped = Math.min(n, Math.max(1, maxQty));
+                                    if (clamped !== n) {
+                                      toast?.info?.(`Chỉ còn ${maxQty} sản phẩm.`);
+                                    }
+                                    setQty?.(it.productId, clamped);
+                                    return;
+                                  }
+                                  setQty?.(it.productId, n);
+                                }}
                                 className="w-12 h-10 text-center text-sm font-semibold outline-none"
                                 inputMode="numeric"
                               />
                               <button
                                 type="button"
-                                onClick={() => incQty?.(it.productId, 1)}
+                                onClick={() => {
+                                  if (!canInc) {
+                                    if (stockKnown) toast?.error?.(`Bạn đã chọn tối đa ${maxQty} sản phẩm.`);
+                                    return;
+                                  }
+                                  incQty?.(it.productId, 1);
+                                }}
                                 className="w-10 h-10 bg-white hover:bg-gray-50 text-gray-700"
                                 aria-label="Tăng số lượng"
+                                disabled={!canInc}
                               >
                                 +
                               </button>
                             </div>
+
+                            {stockKnown ? (
+                              <div className="text-xs text-gray-500">
+                                Tồn kho: <span className="font-semibold">{maxQty}</span>
+                              </div>
+                            ) : null}
 
                             <div className="text-right">
                               <div className="text-xs text-gray-500">Tạm tính</div>
@@ -322,15 +441,25 @@ export default function CartPage() {
 
               <button
                 type="button"
-                className="mt-5 w-full h-11 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-sm font-semibold"
+                className={
+                  "mt-5 w-full h-11 rounded-xl text-white text-sm font-semibold " +
+                  (hasStockIssue
+                    ? "bg-gray-300 cursor-not-allowed"
+                    : "bg-teal-600 hover:bg-teal-700")
+                }
                 onClick={() => {
                   if (!isAuthed) {
                     toast?.error?.("Vui lòng đăng nhập để thanh toán");
                     navigate("/login");
                     return;
                   }
+                  if (hasStockIssue) {
+                    toast?.error?.("Có sản phẩm vượt quá tồn kho. Vui lòng giảm số lượng trước khi thanh toán.");
+                    return;
+                  }
                   navigate("/checkout");
                 }}
+                disabled={hasStockIssue || stockLoading}
               >
                 Tiến hành thanh toán
               </button>

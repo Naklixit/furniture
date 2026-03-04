@@ -3,6 +3,7 @@ import { Link, useParams, useSearchParams } from "react-router-dom";
 import { BadgeCheck, Truck, RotateCcw, ShoppingCart, Star } from "lucide-react";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
+import ImageLightbox from "../components/ImageLightbox";
 import { getProductBySlugApi } from "../services/product.api";
 import { listProductReviewsApi } from "../services/review.api";
 import { useCartStore } from "../stores/cart.store";
@@ -61,6 +62,7 @@ export default function ProductDetailPage() {
   const { slug } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
   const addItem = useCartStore((s) => s.addItem);
+  const cartItems = useCartStore((s) => s.items || []);
   const toast = useToast();
 
   const [animKey, setAnimKey] = useState(0);
@@ -69,6 +71,8 @@ export default function ProductDetailPage() {
   const [error, setError] = useState("");
   const [product, setProduct] = useState(null);
   const [activeUrl, setActiveUrl] = useState("");
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
   const [qty, setQty] = useState(1);
   const [tab, setTab] = useState("desc");
   const [tabPanelKey, setTabPanelKey] = useState(0);
@@ -194,12 +198,37 @@ export default function ProductDetailPage() {
     });
   }, [product]);
 
+  const activeIndex = useMemo(() => {
+    if (!activeUrl) return 0;
+    const idx = (images || []).findIndex((it) => String(it?.url || "") === String(activeUrl));
+    return idx >= 0 ? idx : 0;
+  }, [images, activeUrl]);
+
   const price = useMemo(() => getDisplayPrice(product), [product]);
 
   const stock = useMemo(() => Math.max(0, Number(product?.stock || 0)), [product]);
   const inStock = stock > 0;
+
+  const inCartQty = useMemo(() => {
+    const productId = String(product?.id || "");
+    if (!productId) return 0;
+    const it = (cartItems || []).find((x) => String(x?.productId || "") === productId);
+    return Math.max(0, Number(it?.qty || 0));
+  }, [cartItems, product?.id]);
+
+  const availableStock = Math.max(0, stock - inCartQty);
   const canDecrease = qty > 1;
-  const canIncrease = inStock ? qty < stock : false;
+  const canIncrease = availableStock > 0 ? qty < availableStock : false;
+
+  useEffect(() => {
+    if (!product?.id) return;
+    if (availableStock <= 0) {
+      if (qty !== 1) setQty(1);
+      return;
+    }
+    if (qty > availableStock) setQty(availableStock);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [availableStock, product?.id]);
 
   const extraSpecsEntries = useMemo(() => {
     const extra = toPlainObject(product?.specs?.extra);
@@ -214,7 +243,17 @@ export default function ProductDetailPage() {
       toast?.error?.("Sản phẩm đã hết hàng");
       return;
     }
+    if (availableStock <= 0) {
+      toast?.error?.("Bạn đã có tối đa số lượng tồn kho trong giỏ hàng.");
+      return;
+    }
     const mainUrl = product?.images?.main?.url || images[0]?.url || "";
+
+    const desired = Math.max(1, Math.floor(Number(qty || 1)));
+    const clamped = Math.max(1, Math.min(desired, availableStock));
+    if (clamped !== desired) {
+      toast?.info?.(`Chỉ còn ${availableStock} sản phẩm có thể thêm (đã trừ số lượng trong giỏ).`);
+    }
 
     addItem?.({
       productId: product.id,
@@ -222,7 +261,7 @@ export default function ProductDetailPage() {
       name: product.name,
       price: price.final,
       imageUrl: mainUrl,
-      qty: Math.max(1, Math.min(Number(qty || 1), stock || 1)),
+      qty: clamped,
     });
 
     toast?.success?.("Đã thêm vào giỏ hàng");
@@ -297,11 +336,28 @@ export default function ProductDetailPage() {
           </div>
         ) : (
           <>
+            <ImageLightbox
+              open={lightboxOpen}
+              images={images}
+              initialIndex={lightboxIndex}
+              alt={product?.name || ""}
+              onClose={() => setLightboxOpen(false)}
+            />
             <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-10 items-start">
               <div className="rounded-2xl bg-white border border-gray-200 overflow-hidden self-start">
               <div className="relative aspect-[4/3] bg-gray-50">
                 {activeUrl ? (
-                  <img src={activeUrl} alt={product.name} className="w-full h-full object-cover" />
+                  <button
+                    type="button"
+                    className="w-full h-full block cursor-zoom-in"
+                    title="Phóng to"
+                    onClick={() => {
+                      setLightboxIndex(activeIndex);
+                      setLightboxOpen(true);
+                    }}
+                  >
+                    <img src={activeUrl} alt={product.name} className="w-full h-full object-cover" />
+                  </button>
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-gray-400 text-sm">No image</div>
                 )}
@@ -390,6 +446,14 @@ export default function ProductDetailPage() {
                       <span className="font-semibold text-red-600">Hết hàng</span>
                     )}
                   </div>
+                  {inStock ? (
+                    <div className="flex items-center justify-between gap-4">
+                      <span className="text-gray-500">Có thể thêm</span>
+                      <span className={availableStock > 0 ? "font-semibold text-gray-900" : "font-semibold text-red-600"}>
+                        {availableStock} sản phẩm
+                      </span>
+                    </div>
+                  ) : null}
                 </div>
 
                 <div className="mt-7">
@@ -418,7 +482,7 @@ export default function ProductDetailPage() {
                           (!canIncrease ? "opacity-40 cursor-not-allowed" : "")
                         }
                         disabled={!canIncrease}
-                        onClick={() => setQty((q) => Math.min(stock || 1, Number(q || 1) + 1))}
+                        onClick={() => setQty((q) => Math.min(Math.max(1, availableStock || 1), Number(q || 1) + 1))}
                         aria-label="Tăng số lượng"
                       >
                         +
@@ -429,10 +493,10 @@ export default function ProductDetailPage() {
                   <button
                     type="button"
                     onClick={handleAddToCart}
-                    disabled={!inStock}
+                    disabled={!inStock || availableStock <= 0}
                     className={
                       "mt-4 w-full h-12 rounded-2xl text-white text-sm font-semibold shadow-sm transition flex items-center justify-center gap-2 " +
-                      (inStock ? "bg-teal-600 hover:bg-teal-700" : "bg-gray-300 cursor-not-allowed")
+                      (inStock && availableStock > 0 ? "bg-teal-600 hover:bg-teal-700" : "bg-gray-300 cursor-not-allowed")
                     }
                   >
                     <ShoppingCart size={18} />

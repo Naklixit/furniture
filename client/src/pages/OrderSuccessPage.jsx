@@ -43,10 +43,11 @@ export default function OrderSuccessPage() {
   const [order, setOrder] = useState(null);
 
   useEffect(() => {
-    // Clear cart best-effort (especially after VNPay return)
+    // Clear cart only when the order is actually successful.
+    if (result === "fail") return;
     clear?.();
     clearDiscount?.();
-  }, [clear, clearDiscount]);
+  }, [clear, clearDiscount, result]);
 
   useEffect(() => {
     let mounted = true;

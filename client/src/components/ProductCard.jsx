@@ -45,6 +45,7 @@ const StarsRow = ({ value, size = 14 }) => {
 const ProductCard = ({ product, showAddToCart = true, onAddToCart, className = "" }) => {
   const navigate = useNavigate();
   const addItem = useCartStore((s) => s.addItem);
+  const cartItems = useCartStore((s) => s.items || []);
   const toast = useToast();
 
   const [hovered, setHovered] = useState(false);
@@ -63,7 +64,30 @@ const ProductCard = ({ product, showAddToCart = true, onAddToCart, className = "
   const ratingAvg = useMemo(() => clamp(Number(product?.ratingAvg || 0), 0, 5), [product]);
   const ratingCount = useMemo(() => Math.max(0, Number(product?.ratingCount || 0)), [product]);
 
+  const stockInfo = useMemo(() => {
+    const rawStock = Number(product?.stock);
+    const hasStock = Number.isFinite(rawStock);
+    const stock = hasStock ? Math.max(0, rawStock) : null;
+    const productId = String(product?.id || "");
+    const inCartQty = productId
+      ? Math.max(0, Number((cartItems || []).find((x) => String(x?.productId || "") === productId)?.qty || 0))
+      : 0;
+    const available = hasStock ? Math.max(0, stock - inCartQty) : null;
+    return { hasStock, stock, inCartQty, available };
+  }, [product?.id, product?.stock, cartItems]);
+
   const handleAdd = () => {
+    if (stockInfo?.hasStock) {
+      if ((stockInfo.stock || 0) <= 0) {
+        toast?.error?.("Sản phẩm đã hết hàng");
+        return;
+      }
+      if ((stockInfo.available || 0) <= 0) {
+        toast?.error?.("Bạn đã có tối đa số lượng tồn kho trong giỏ hàng.");
+        return;
+      }
+    }
+
     const payload = {
       productId: product?.id,
       slug: product?.slug,

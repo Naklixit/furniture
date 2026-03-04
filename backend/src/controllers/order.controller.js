@@ -2,6 +2,7 @@ const mongoose = require("mongoose");
 const axios = require("axios");
 
 const Order = require("../models/Order.model");
+const VnpayPending = require("../models/VnpayPending.model");
 const DiscountCode = require("../models/DiscountCode.model");
 
 const {
@@ -62,7 +63,13 @@ const generateOrderCode = async () => {
     // Ensure length 6
     const fixed = (code + "00000").slice(0, 6);
     const exists = await Order.findOne({ orderCode: fixed }).select("_id");
-    if (!exists) return fixed;
+    if (exists) continue;
+
+    // Also avoid collisions with pending VNPay sessions
+    const pendingExists = await VnpayPending.findOne({
+      orderCode: fixed,
+    }).select("_id");
+    if (!pendingExists) return fixed;
   }
   return `A${Date.now().toString(16).slice(-5).toUpperCase()}`;
 };
@@ -165,55 +172,69 @@ const createVnpayPayment = async (req, res, next) => {
 
     const returnUrl = `${getServerBaseUrl(req)}/api/orders/vnpay/return`;
 
-    const orderCode = await generateOrderCode();
-    const txnRef = `${orderCode}_${Date.now()}`;
+    // Create a pending VNPay session (NOT an Order). Order will be created only after payment success.
+    let pending = null;
+    for (let i = 0; i < 5; i += 1) {
+      const orderCode = await generateOrderCode();
+      const txnRef = `${orderCode}_${Date.now()}`;
 
-    const clientBaseUrl =
-      getClientBaseUrlFromBody(req) ||
-      getClientBaseUrlFromRequest(req) ||
-      getClientBaseUrl();
+      const clientBaseUrl =
+        getClientBaseUrlFromBody(req) ||
+        getClientBaseUrlFromRequest(req) ||
+        getClientBaseUrl();
 
-    const created = await Order.create({
-      orderCode,
-      userId: built.value.userId,
-      customer: built.value.customer,
-      shipping: built.value.shipping,
-      items: built.value.items,
-      subtotal: built.value.subtotal,
-      shippingFee: built.value.shippingFee,
-      discount: built.value.discount,
-      total: built.value.total,
-      payment: {
-        method: "VNPAY",
-        status: "pending",
-        vnpay: { txnRef, clientBaseUrl },
-      },
-      status: "pending",
-      createdBy: built.value.userId,
-      updatedBy: built.value.userId,
-    });
+      try {
+        pending = await VnpayPending.create({
+          txnRef,
+          orderCode,
+          userId: built.value.userId,
+          customer: built.value.customer,
+          shipping: built.value.shipping,
+          items: built.value.items,
+          subtotal: built.value.subtotal,
+          shippingFee: built.value.shippingFee,
+          discount: built.value.discount,
+          total: built.value.total,
+          clientBaseUrl,
+          status: "pending",
+        });
+        break;
+      } catch (e) {
+        const msg = String(e?.message || "");
+        const dup =
+          e?.code === 11000 ||
+          msg.toLowerCase().includes("duplicate key") ||
+          msg.toLowerCase().includes("e11000");
+        if (!dup) throw e;
+      }
+    }
+
+    if (!pending) {
+      return res
+        .status(500)
+        .json({ message: "Không thể khởi tạo giao dịch VNPay" });
+    }
 
     try {
       // NOTE: vnpay.buildPaymentUrl() will multiply vnp_Amount by 100 internally.
       // So we pass the amount in VND here.
-      const amount = Math.max(0, Math.round(Number(created.total || 0)));
+      const amount = Math.max(0, Math.round(Number(pending.total || 0)));
 
       const paymentUrl = vnpay.buildPaymentUrl({
         vnp_Amount: amount,
         vnp_IpAddr: getIpAddress(req),
         vnp_ReturnUrl: returnUrl,
-        vnp_TxnRef: txnRef,
-        vnp_OrderInfo: `Thanh toan don hang #${created.orderCode}`,
+        vnp_TxnRef: pending.txnRef,
+        vnp_OrderInfo: `Thanh toan don hang #${pending.orderCode}`,
       });
 
       return res.json({
         message: "OK",
-        orderId: created._id,
-        orderCode: created.orderCode,
+        orderCode: pending.orderCode,
         paymentUrl,
       });
     } catch (e) {
-      await Order.deleteOne({ _id: created._id });
+      await VnpayPending.deleteOne({ _id: pending._id });
       throw e;
     }
   } catch (err) {
@@ -250,16 +271,31 @@ const vnpayReturn = async (req, res, next) => {
 
     const txnRef =
       typeof req.query?.vnp_TxnRef === "string" ? req.query.vnp_TxnRef : "";
-    const order = txnRef
+    const pending = txnRef ? await VnpayPending.findOne({ txnRef }) : null;
+    const existingOrder = txnRef
       ? await Order.findOne({ "payment.vnpay.txnRef": txnRef })
       : null;
 
+    // Prefer existing created order (idempotency), fallback to pending session.
     const clientBase =
-      (order?.payment?.vnpay?.clientBaseUrl
-        ? String(order.payment.vnpay.clientBaseUrl).trim().replace(/\/$/, "")
-        : "") || getClientBaseUrl();
+      (existingOrder?.payment?.vnpay?.clientBaseUrl
+        ? String(existingOrder.payment.vnpay.clientBaseUrl)
+            .trim()
+            .replace(/\/$/, "")
+        : pending?.clientBaseUrl
+          ? String(pending.clientBaseUrl).trim().replace(/\/$/, "")
+          : "") || getClientBaseUrl();
 
-    if (!order) {
+    if (existingOrder) {
+      // Order already created for this txnRef; just redirect based on its payment status.
+      const ok = existingOrder.payment?.status === "paid";
+      const q = ok
+        ? `result=success&orderId=${encodeURIComponent(String(existingOrder._id))}`
+        : `result=fail&orderId=${encodeURIComponent(String(existingOrder._id))}`;
+      return res.redirect(`${clientBase}/order/success?${q}`);
+    }
+
+    if (!pending) {
       return res.redirect(`${clientBase}/order/success?result=fail`);
     }
 
@@ -276,9 +312,7 @@ const vnpayReturn = async (req, res, next) => {
     const payDate =
       typeof req.query?.vnp_PayDate === "string" ? req.query.vnp_PayDate : "";
 
-    order.payment.vnpay = {
-      ...(order.payment.vnpay || {}),
-      txnRef,
+    pending.vnpayReturn = {
       responseCode,
       transactionNo,
       bankCode,
@@ -287,23 +321,79 @@ const vnpayReturn = async (req, res, next) => {
     };
 
     if (verify?.isSuccess && responseCode === "00") {
-      order.payment.status = "paid";
-      order.payment.paidAt = new Date();
-      await order.save();
+      // Create the real Order only on successful payment.
+      let created = null;
+      try {
+        created = await Order.create({
+          orderCode: pending.orderCode,
+          userId: pending.userId,
+          customer: pending.customer,
+          shipping: pending.shipping,
+          items: pending.items,
+          subtotal: pending.subtotal,
+          shippingFee: pending.shippingFee,
+          discount: {
+            ...(pending.discount || {}),
+            consumed: false,
+          },
+          total: pending.total,
+          payment: {
+            method: "VNPAY",
+            status: "paid",
+            paidAt: new Date(),
+            vnpay: {
+              txnRef,
+              clientBaseUrl: pending.clientBaseUrl,
+              responseCode,
+              transactionNo,
+              bankCode,
+              payDate,
+              rawReturn: { ...req.query },
+            },
+          },
+          status: "pending",
+          createdBy: pending.userId,
+          updatedBy: pending.userId,
+        });
+      } catch (e) {
+        const msg = String(e?.message || "");
+        const dup =
+          e?.code === 11000 ||
+          msg.toLowerCase().includes("duplicate key") ||
+          msg.toLowerCase().includes("e11000");
+        if (!dup) throw e;
 
-      await consumeDiscountIfNeeded({ order });
+        const already =
+          (await Order.findOne({ "payment.vnpay.txnRef": txnRef })) ||
+          (await Order.findOne({ orderCode: pending.orderCode }));
+        if (!already) throw e;
+
+        pending.status = "paid";
+        pending.paidAt = already.payment?.paidAt || new Date();
+        pending.orderId = already._id;
+        await pending.save();
+
+        return res.redirect(
+          `${clientBase}/order/success?result=success&orderId=${encodeURIComponent(String(already._id))}`,
+        );
+      }
+
+      pending.status = "paid";
+      pending.paidAt = created.payment?.paidAt || new Date();
+      pending.orderId = created._id;
+      await pending.save();
+
+      await consumeDiscountIfNeeded({ order: created });
 
       return res.redirect(
-        `${clientBase}/order/success?result=success&orderId=${encodeURIComponent(String(order._id))}`,
+        `${clientBase}/order/success?result=success&orderId=${encodeURIComponent(String(created._id))}`,
       );
     }
 
-    order.payment.status = "failed";
-    await order.save();
+    pending.status = "failed";
+    await pending.save();
 
-    return res.redirect(
-      `${clientBase}/order/success?result=fail&orderId=${encodeURIComponent(String(order._id))}`,
-    );
+    return res.redirect(`${clientBase}/order/success?result=fail`);
   } catch (err) {
     return next(err);
   }

@@ -71,11 +71,11 @@ const CategoriesManagementPanel = ({ toast }) => {
 
   const thClassByColumn = useMemo(() => {
     return {
-      "#": "w-[70px]",
-      "Danh mục": "w-[260px]",
-      "Slug": "w-[220px]",
-      "Mô tả": "w-[360px]",
-      "Trạng thái": "w-[190px]",
+      "#": "w-[60px]",
+      "Danh mục": "w-[220px]",
+      "Slug": "w-[200px]",
+      "Mô tả": "w-[280px]",
+      "Trạng thái": "w-[180px]",
       "Hành động": "w-[140px]",
     };
   }, []);
@@ -191,9 +191,9 @@ const CategoriesManagementPanel = ({ toast }) => {
           </div>
         </div>
 
-        <div className="overflow-x-hidden">
+        <div className="overflow-x-auto">
           <div key={resultsAnimKey} className={!loading && !error ? "anim-fade-up" : ""}>
-            <table className="w-full table-fixed">
+            <table className="min-w-[980px] w-full table-fixed">
               <thead>
                 <tr className="bg-gray-50 text-gray-600 text-sm">
                   {columns.map((c) => (

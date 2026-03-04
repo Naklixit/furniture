@@ -126,7 +126,7 @@ const DiscountCodesManagementPanel = ({ toast }) => {
   };
 
   const columns = useMemo(
-    () => ["Mã giảm giá", "Giảm giá", "Số lượng còn lại", "Thời gian", "Đơn tối thiểu", "Thao tác"],
+    () => ["Mã giảm giá", "Giảm giá", "Số lượng còn lại", "Thời gian", "Đơn tối thiểu", "Hành động"],
     [],
   );
 
@@ -137,7 +137,7 @@ const DiscountCodesManagementPanel = ({ toast }) => {
       "Số lượng còn lại": "w-[180px]",
       "Thời gian": "w-[240px]",
       "Đơn tối thiểu": "w-[160px]",
-      "Thao tác": "w-[140px]",
+      "Hành động": "w-[140px]",
     };
   }, []);
 
