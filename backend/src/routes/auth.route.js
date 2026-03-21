@@ -1,4 +1,3 @@
-// routes/auth.route.js
 const express = require("express");
 const router = express.Router();
 const {
@@ -7,13 +6,10 @@ const {
   googleLogin,
   refresh,
   logout,
-} = require("../controllers/auth.controller");
-
-const {
   forgotPassword,
   verifyOtp,
   resetPassword,
-} = require("../controllers/passwordReset.controller");
+} = require("../controllers/auth.controller");
 
 router.post("/register", register);
 router.post("/login", login);

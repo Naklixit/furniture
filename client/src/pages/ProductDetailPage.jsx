@@ -4,10 +4,11 @@ import { BadgeCheck, Truck, RotateCcw, ShoppingCart, Star } from "lucide-react";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import ImageLightbox from "../components/ImageLightbox";
-import { getProductBySlugApi } from "../services/product.api";
+import { getProductBySlugApi, getSimilarProductsApi } from "../services/product.api";
 import { listProductReviewsApi } from "../services/review.api";
 import { useCartStore } from "../stores/cart.store";
 import { useToast } from "../context/useToast";
+import ProductCard from "../components/ProductCard";
 
 const formatMoneyVND = (n) => {
   const value = Number(n || 0);
@@ -82,6 +83,9 @@ export default function ProductDetailPage() {
   const [reviews, setReviews] = useState([]);
   const [reviewsMeta, setReviewsMeta] = useState({ page: 1, limit: 6, total: 0, totalPages: 1 });
 
+  const [similarProducts, setSimilarProducts] = useState([]);
+  const [similarLoading, setSimilarLoading] = useState(false);
+
   const setTabAndUrl = (nextTab) => {
     const t = nextTab === "reviews" ? "reviews" : "desc";
     setTab(t);
@@ -120,6 +124,7 @@ export default function ProductDetailPage() {
         setReviews([]);
         setReviewsMeta({ page: 1, limit: 6, total: 0, totalPages: 1 });
         setReviewsError("");
+        setSimilarProducts([]);
       } catch (e) {
         if (!mounted) return;
         setError(e?.message || e?.response?.data?.message || "Không thể tải sản phẩm");
@@ -144,6 +149,27 @@ export default function ProductDetailPage() {
   useEffect(() => {
     setTabPanelKey((k) => k + 1);
   }, [tab]);
+
+  // Fetch similar products
+  useEffect(() => {
+    if (!slug || loading || error || !product) return;
+    let mounted = true;
+    const run = async () => {
+      try {
+        setSimilarLoading(true);
+        const res = await getSimilarProductsApi(slug, { limit: 8 });
+        if (!mounted) return;
+        setSimilarProducts(Array.isArray(res?.items) ? res.items : []);
+      } catch {
+        if (!mounted) return;
+        setSimilarProducts([]);
+      } finally {
+        if (mounted) setSimilarLoading(false);
+      }
+    };
+    run();
+    return () => { mounted = false; };
+  }, [slug, product?.id]);
 
   const fetchReviews = async ({ page, append }) => {
     const productId = product?.id;
@@ -281,14 +307,19 @@ export default function ProductDetailPage() {
       <div className="inline-flex items-center gap-0.5">
         {Array.from({ length: 5 }).map((_, i) => {
           const idx = i + 1;
-          const active = v >= idx - 0.35;
+          const ratio = Math.max(0, Math.min(1, v - i));
           return (
-            <Star
-              key={idx}
-              size={size}
-              className={active ? "text-amber-500" : "text-gray-300"}
-              fill={active ? "currentColor" : "none"}
-            />
+            <span key={idx} className="relative inline-block" style={{ width: size, height: size }}>
+              <Star size={size} className="text-gray-300" fill="none" />
+              {ratio > 0 ? (
+                <span
+                  className="absolute left-0 top-0 overflow-hidden"
+                  style={{ width: `${ratio * 100}%`, height: size }}
+                >
+                  <Star size={size} className="text-amber-500" fill="currentColor" />
+                </span>
+              ) : null}
+            </span>
           );
         })}
       </div>
@@ -686,6 +717,34 @@ export default function ProductDetailPage() {
                 </div>
               </div>
             </div>
+
+            {/* Similar Products */}
+            {(similarLoading || similarProducts.length > 0) && (
+              <div className="mt-10">
+                <h2 className="text-xl font-extrabold text-gray-900">Sản phẩm tương tự</h2>
+                <p className="mt-1 text-sm text-gray-500">
+                  Các sản phẩm cùng danh mục, thương hiệu hoặc chất liệu tương tự
+                </p>
+
+                {similarLoading ? (
+                  <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                    {Array.from({ length: 4 }).map((_, i) => (
+                      <div key={i} className="rounded-2xl border border-gray-200 bg-white p-4">
+                        <div className="aspect-[4/3] rounded-xl bg-gray-100 animate-pulse" />
+                        <div className="mt-4 h-4 w-5/6 bg-gray-100 rounded animate-pulse" />
+                        <div className="mt-2 h-4 w-1/2 bg-gray-100 rounded animate-pulse" />
+                      </div>
+                    ))}
+                  </div>
+                ) : similarProducts.length > 0 ? (
+                  <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 anim-fade-up">
+                    {similarProducts.map((p) => (
+                      <ProductCard key={p.id} product={p} />
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            )}
           </>
         )}
         </div>

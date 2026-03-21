@@ -15,6 +15,7 @@ import OrderSuccessPage from "./pages/OrderSuccessPage";
 import OrderDetailPage from "./pages/OrderDetailPage";
 import { useAuth } from "./context/useAuth";
 import ScrollToTop from "./components/ScrollToTop";
+// import AiAssistantWidget from "./components/AiAssistantWidget";
 function App() {
   const { user, isAuthed, bootstrapped } = useAuth();
   const defaultAuthedPath = user?.role === "admin" ? "/admin/dashboard" : "/";
@@ -140,6 +141,7 @@ function App() {
         />
         <Route path="*" element={<Navigate to={isAuthed ? defaultAuthedPath : "/"} replace />} />
       </Routes>
+      {/* {user?.role === "admin" ? null : <AiAssistantWidget />} */}
     </>
   );
 }

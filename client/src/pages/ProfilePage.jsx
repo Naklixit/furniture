@@ -565,7 +565,7 @@ export default function ProfilePage() {
                             className="rounded-2xl border border-gray-200 bg-white overflow-hidden shadow-sm transition-all duration-200 hover:shadow-md hover:-translate-y-0.5"
                           >
                             {/* Header */}
-                            <div className="px-6 py-4 flex items-center justify-between gap-4">
+                            <div className="px-6 py-4 bg-gray-50 flex items-center justify-between gap-4">
                               <div className="min-w-0">
                                 <div className="flex items-center gap-3">
                                   <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-amber-50 border border-amber-200">
@@ -593,7 +593,7 @@ export default function ProfilePage() {
                             </div>
 
                             {/* Items */}
-                            <div className="px-6 py-4 bg-gray-50 border-t border-gray-100">
+                            <div className="px-6 py-4 border-t border-gray-100">
                               <div className="space-y-4">
                                 {(o?.items || []).map((it) => (
                                   <div
@@ -609,8 +609,8 @@ export default function ProfilePage() {
                                     </div>
 
                                     <div className="min-w-0 flex-1">
-                                      <div className="text-sm font-bold text-gray-900 line-clamp-2">{it?.name || ""}</div>
-                                      <div className="mt-1 text-xs text-gray-700">Số lượng: {Number(it?.qty || 0)}</div>
+                                      <div className="text-sm font-semibold text-gray-900 line-clamp-2">{it?.name || ""}</div>
+                                      <div className="mt-1 text-xs font-semibold text-gray-700">Số lượng: {Number(it?.qty || 0)}</div>
 
                                       {o?.status === "completed" ? (
                                         <button
@@ -634,7 +634,7 @@ export default function ProfilePage() {
 
                             {/* Footer */}
                             <div className="px-6 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                              <div className="text-xs text-gray-700">
+                              <div className="text-xs font-semibold text-gray-700">
                                 Tổng tiền: <span className="text-base font-extrabold text-teal-700">{formatMoneyVND(o?.total)}</span>
                               </div>
 
@@ -645,7 +645,7 @@ export default function ProfilePage() {
                                     onClick={() => cancelOrder(o)}
                                     disabled={ordersBusyId === o?.id}
                                     className={
-                                      "h-9 px-4 rounded-xl text-sm font-bold border transition " +
+                                      "h-9 px-4 rounded-lg text-sm font-bold border transition " +
                                       (ordersBusyId === o?.id
                                         ? "bg-red-50 border-red-200 text-red-700 cursor-not-allowed opacity-70"
                                         : "bg-white border-red-300 text-red-700 hover:bg-red-50")
@@ -658,7 +658,7 @@ export default function ProfilePage() {
                                 <button
                                   type="button"
                                   onClick={() => goToOrderDetail(o)}
-                                  className="h-9 px-4 rounded-xl text-sm font-semibold border border-gray-300 bg-white hover:bg-gray-50 inline-flex items-center gap-2 transition-transform duration-150 active:scale-[0.99]"
+                                  className="h-9 px-4 rounded-lg text-sm font-semibold border border-gray-300 bg-white hover:bg-gray-50 inline-flex items-center gap-2 transition-transform duration-150 active:scale-[0.99]"
                                 >
                                   <Eye size={16} className="text-gray-600" />
                                   Chi tiết

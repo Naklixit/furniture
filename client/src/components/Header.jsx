@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "react-router-dom";
-import { ShoppingCart, User, ChevronDown, Search, LogOut, UserRound, Package, Home } from "lucide-react";
+import { ShoppingCart, User, ChevronDown, Search, LogOut, UserRound, Package } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../context/useAuth";
 import { logoutApi } from "../services/auth.api";
@@ -159,11 +159,18 @@ function Header() {
     <header className="w-full border-b border-gray-200 bg-white/90 backdrop-blur supports-[backdrop-filter]:bg-white/70 sticky top-0 z-40">
       <div className="max-w-7xl mx-auto px-6 flex items-center justify-between h-20 gap-8">
         {/* Logo */}
-        <Link to="/" className="flex items-center gap-2 shrink-0" aria-label="Trang chủ">
-          <div className="w-10 h-10 bg-zinc-900 rounded-xl flex items-center justify-center">
-            <Home className="w-6 h-6 text-white" />
-          </div>
-          <span className="text-2xl font-bold tracking-tight text-zinc-900 hidden sm:block">
+        <Link to="/" className="flex items-center gap-2.5 shrink-0" aria-label="Trang chủ">
+          <svg
+            viewBox="0 0 30 36"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-8 w-auto"
+          >
+            <polygon points="1,0 30,0 30,9.5 4.5,9.5" fill="#18181b" />
+            <polygon points="7,13 30,13 30,22.5 10.5,22.5" fill="#18181b" />
+            <polygon points="13,26 30,26 30,35.5 16.5,35.5" fill="#18181b" />
+          </svg>
+          <span className="text-[26px] font-bold tracking-tight text-zinc-900 hidden sm:block" style={{ fontFamily: "'Inter', 'Segoe UI', system-ui, sans-serif" }}>
             FRADEL
           </span>
         </Link>
@@ -255,7 +262,9 @@ function Header() {
                         const active = idx === highlightIdx;
                         const imgUrl = p?.images?.main?.url || "";
                         const name = p?.name || "";
-                        const price = p?.salePrice ?? p?.originalPrice ?? 0;
+                        const origPrice = Number(p?.originalPrice || 0);
+                        const saleP = Number(p?.salePrice || 0);
+                        const isOnSale = saleP > 0 && origPrice > 0 && saleP < origPrice;
                         return (
                           <li
                             key={p?.id || `${p?.slug || ""}-${idx}`}
@@ -284,7 +293,14 @@ function Header() {
                               </span>
                               <span className="min-w-0 flex-1">
                                 <span className="block text-sm font-semibold text-gray-900 truncate">{name}</span>
-                                <span className="block text-xs font-bold text-teal-700">{formatMoneyVND(price)}</span>
+                                {isOnSale ? (
+                                  <span className="flex items-center gap-1.5">
+                                    <span className="text-xs font-bold text-red-600">{formatMoneyVND(saleP)}</span>
+                                    <span className="text-[11px] text-gray-400 line-through">{formatMoneyVND(origPrice)}</span>
+                                  </span>
+                                ) : (
+                                  <span className="block text-xs font-bold text-teal-700">{formatMoneyVND(origPrice || saleP)}</span>
+                                )}
                               </span>
                             </button>
                           </li>

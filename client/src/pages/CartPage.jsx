@@ -4,7 +4,10 @@ import Header from "../components/Header";
 import Footer from "../components/Footer";
 import { useCartStore } from "../stores/cart.store";
 import { useToast } from "../context/useToast";
-import { validateDiscountCodeApi } from "../services/discountCode.api";
+import {
+  listAvailableDiscountCodesApi,
+  validateDiscountCodeApi,
+} from "../services/discountCode.api";
 import { getProductByIdApi } from "../services/product.api";
 import { ShieldCheck, Trash2, Truck } from "lucide-react";
 import { useAuth } from "../context/useAuth";
@@ -36,6 +39,9 @@ export default function CartPage() {
 
   const [discountInput, setDiscountInput] = useState("");
   const [applying, setApplying] = useState(false);
+
+  const [availableDiscounts, setAvailableDiscounts] = useState([]);
+  const [availableLoading, setAvailableLoading] = useState(false);
 
   const handleRemove = (productId) => {
     removeItem?.(productId);
@@ -172,6 +178,42 @@ export default function CartPage() {
     if (!discount?.code) return;
     setDiscountInput(discount.code);
   }, [discount?.code]);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const run = async () => {
+      if (!isAuthed) {
+        setAvailableDiscounts([]);
+        return;
+      }
+
+      try {
+        setAvailableLoading(true);
+        const res = await listAvailableDiscountCodesApi({ limit: 10 });
+        const items = res?.items;
+        if (!mounted) return;
+        setAvailableDiscounts(Array.isArray(items) ? items : []);
+      } catch {
+        if (!mounted) return;
+        setAvailableDiscounts([]);
+      } finally {
+        if (!mounted) return;
+        setAvailableLoading(false);
+      }
+    };
+
+    run();
+    return () => {
+      mounted = false;
+    };
+  }, [isAuthed]);
+
+  const formatDateVi = (d) => {
+    const t = new Date(d);
+    if (!Number.isFinite(t.getTime())) return "";
+    return t.toLocaleDateString("vi-VN");
+  };
 
   const onApplyDiscount = async () => {
     if (applying) return;
@@ -385,36 +427,104 @@ export default function CartPage() {
                   />
                   <button
                     type="button"
-                    onClick={onApplyDiscount}
-                    className={
-                      "h-10 px-4 rounded-xl text-sm font-semibold text-white " +
-                      (applying || Boolean(discount?.code) || !discountInput.trim()
-                        ? "bg-zinc-900/60 cursor-not-allowed"
-                        : "bg-zinc-900 hover:bg-zinc-800")
-                    }
-                    disabled={applying || Boolean(discount?.code) || !discountInput.trim()}
-                  >
-                    {applying ? "Đang áp dụng..." : "Áp dụng"}
-                  </button>
-                  {discount?.code ? (
-                    <button
-                      type="button"
-                      className="h-10 px-3 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-sm font-semibold text-gray-700"
-                      onClick={() => {
+                    onClick={() => {
+                      if (discount?.code) {
                         clearDiscount?.();
                         setDiscountInput("");
                         toast?.info?.("Đã bỏ áp dụng mã giảm giá");
-                      }}
-                    >
-                      Bỏ
-                    </button>
-                  ) : null}
+                        return;
+                      }
+                      onApplyDiscount();
+                    }}
+                    className={
+                      "h-10 px-4 rounded-xl text-sm font-semibold text-white " +
+                      (applying || (!discount?.code && !discountInput.trim())
+                        ? "bg-black cursor-not-allowed"
+                        : "bg-black hover:bg-zinc-800")
+                    }
+                    disabled={applying || (!discount?.code && !discountInput.trim())}
+                  >
+                    {applying
+                      ? "Đang áp dụng..."
+                      : discount?.code
+                        ? "Bỏ áp dụng"
+                        : "Áp dụng"}
+                  </button>
                 </div>
                 {discount?.code ? (
                   <div className="mt-2 text-xs text-teal-700 font-semibold">
                     Đã áp dụng: {discount.code} (-{Number(discount.percentOff || 0)}%)
                   </div>
                 ) : null}
+
+                <div className="mt-3">
+                  <div className="flex items-center justify-between">
+                    <div className="text-xs font-semibold text-gray-700">Mã khả dụng</div>
+                    {availableLoading ? (
+                      <div className="text-xs text-gray-400">Đang tải…</div>
+                    ) : null}
+                  </div>
+
+                  {!isAuthed ? (
+                    <div className="mt-2 text-xs text-gray-500">
+                      Đăng nhập để xem danh sách mã giảm giá.
+                    </div>
+                  ) : availableDiscounts.length === 0 ? (
+                    <div className="mt-2 text-xs text-gray-500">Không có mã phù hợp.</div>
+                  ) : (
+                    <div className="mt-2 space-y-2">
+                      {availableDiscounts.map((d) => {
+                        const used = Boolean(d?.isUsedByMe);
+                        const code = String(d?.code || "");
+                        const pct = Number(d?.percentOff || 0);
+                        const min = Number(d?.minOrderValue || 0);
+                        const endsAt = d?.endsAt;
+
+                        return (
+                          <button
+                            key={String(d?.id || code)}
+                            type="button"
+                            className={
+                              "w-full text-left rounded-xl border border-gray-200 bg-white px-3 py-2 flex items-center justify-between gap-3 " +
+                              (used
+                                ? "opacity-40 cursor-not-allowed"
+                                : "hover:bg-gray-50")
+                            }
+                            disabled={used}
+                            onClick={() => {
+                              if (used) return;
+                              if (discount?.code) {
+                                toast?.info?.("Bạn đã áp dụng một mã giảm giá rồi");
+                                return;
+                              }
+                              setDiscountInput(code);
+                            }}
+                            title={used ? "Bạn đã dùng mã này" : "Chọn mã"}
+                          >
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-extrabold tracking-wide text-gray-900">
+                                  {code}
+                                </span>
+                                <span className="text-[11px] font-bold text-white bg-black rounded-md px-2 py-0.5">
+                                  -{pct}%
+                                </span>
+                              </div>
+                              <div className="mt-0.5 text-[11px] text-gray-500">
+                                Đơn tối thiểu {formatMoneyVND(min)}
+                                {endsAt ? ` • HSD: ${formatDateVi(endsAt)}` : ""}
+                                {used ? " • Đã dùng" : ""}
+                              </div>
+                            </div>
+                            <div className="text-xs font-semibold text-gray-600 shrink-0">
+                              {used ? "Không khả dụng" : "Chọn"}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="mt-5 space-y-2 text-sm">

@@ -9,6 +9,10 @@ export const listProductReviewsApi = (
   });
 };
 
+export const getLatestReviewsApi = ({ limit = 10 } = {}) => {
+  return axiosClient.get("/reviews/latest", { params: { limit } });
+};
+
 export const createReviewApi = ({
   orderId,
   productId,

@@ -1,12 +1,19 @@
+import { useEffect, useState } from "react";
 import Header from "../components/Header";
 import HeroCarousel from "../components/HeroCarousel";
 import Footer from "../components/Footer";
 import HomeCategoriesSection from "../components/HomeCategoriesSection";
 import HomeFeaturedProductsSection from "../components/HomeFeaturedProductsSection";
+import HomeTestimonialsSection from "../components/HomeTestimonialsSection";
 
 const HomePage = () => {
+  const [pageAnimKey, setPageAnimKey] = useState(0);
+  useEffect(() => {
+    setPageAnimKey((k) => k + 1);
+  }, []);
+
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div key={pageAnimKey} className="min-h-screen bg-gray-50 anim-fade-up">
       <Header />
 
       <main className="pt-0 pb-8">
@@ -18,6 +25,7 @@ const HomePage = () => {
           {/* Nội dung trang chủ phía dưới banner */}
           <HomeCategoriesSection />
           <HomeFeaturedProductsSection />
+          <HomeTestimonialsSection />
         </div>
       </main>
 

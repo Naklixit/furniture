@@ -32,7 +32,7 @@ const AdminLayout = ({
 
   return (
     <div className="h-screen bg-gray-50 flex overflow-hidden">
-      <aside className="w-64 bg-white border-r border-gray-200 hidden md:flex md:flex-col h-full overflow-hidden">
+      <aside className="w-56 bg-white border-r border-gray-200 hidden md:flex md:flex-col h-full overflow-hidden">
         <div className="h-16 px-4 flex items-center border-b border-gray-200">
           <div className="select-none leading-none whitespace-nowrap">
             <span className="text-zinc-900 text-[22px] font-extrabold tracking-tight">FRADEL</span>
@@ -40,7 +40,7 @@ const AdminLayout = ({
           </div>
         </div>
 
-        <nav className="px-3 py-4 flex-1 overflow-y-auto">
+        <nav className="px-2 py-3 flex-1 overflow-y-auto">
           <ul className="space-y-1 text-sm">
             {navItems.map(({ key, label, Icon }) => {
               const active = key === activeKey;
@@ -130,7 +130,7 @@ const AdminLayout = ({
         </header>
 
         <main className="relative z-0 flex-1 overflow-y-auto p-4 md:p-8">
-          <div className="max-w-[1200px]">{children}</div>
+          <div className="max-w-[1400px]">{children}</div>
         </main>
       </div>
     </div>

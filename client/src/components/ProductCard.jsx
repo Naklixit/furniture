@@ -28,14 +28,19 @@ const StarsRow = ({ value, size = 14 }) => {
     <div className="inline-flex items-center gap-0.5">
       {Array.from({ length: 5 }).map((_, i) => {
         const idx = i + 1;
-        const active = v >= idx - 0.35;
+        const ratio = clamp(v - i, 0, 1);
         return (
-          <Star
-            key={idx}
-            size={size}
-            className={active ? "text-amber-500" : "text-gray-300"}
-            fill={active ? "currentColor" : "none"}
-          />
+          <span key={idx} className="relative inline-block" style={{ width: size, height: size }}>
+            <Star size={size} className="text-gray-300" fill="none" />
+            {ratio > 0 ? (
+              <span
+                className="absolute left-0 top-0 overflow-hidden"
+                style={{ width: `${ratio * 100}%`, height: size }}
+              >
+                <Star size={size} className="text-amber-500" fill="currentColor" />
+              </span>
+            ) : null}
+          </span>
         );
       })}
     </div>
@@ -109,7 +114,7 @@ const ProductCard = ({ product, showAddToCart = true, onAddToCart, className = "
   return (
     <div
       className={
-        "group rounded-2xl border border-gray-200 bg-white shadow-sm hover:shadow-md transition overflow-hidden " +
+        "group rounded-2xl border border-gray-200 bg-white shadow-sm hover:shadow-md transition overflow-hidden flex flex-col h-full " +
         className
       }
       onMouseEnter={() => setHovered(true)}
@@ -149,8 +154,8 @@ const ProductCard = ({ product, showAddToCart = true, onAddToCart, className = "
         ) : null}
       </div>
 
-      <div className="p-4">
-        <div className="flex items-center gap-2 text-xs text-gray-500">
+      <div className="p-4 flex flex-col flex-1">
+        <div className="flex items-center gap-2 text-xs text-gray-500 min-h-[18px]">
           <StarsRow value={ratingAvg} />
           <span>({ratingCount})</span>
         </div>
@@ -158,14 +163,14 @@ const ProductCard = ({ product, showAddToCart = true, onAddToCart, className = "
         <button
           type="button"
           onClick={() => navigate(`/products/${encodeURIComponent(product?.slug || "")}`)}
-          className="mt-2 text-left text-sm font-semibold text-gray-900 hover:text-teal-700 line-clamp-2"
+          className="mt-2 text-left text-sm font-semibold text-gray-900 hover:text-teal-700 line-clamp-2 min-h-[40px]"
           title={product?.name || ""}
         >
           {product?.name || ""}
         </button>
 
-        <div className="mt-3 flex items-end gap-2">
-          <div className="text-base font-bold text-gray-900">{formatMoneyVND(final)}</div>
+        <div className="mt-auto pt-3 flex items-end gap-2">
+          <div className="text-base font-bold text-teal-700">{formatMoneyVND(final)}</div>
           {hasSale ? (
             <div className="text-xs text-gray-400 line-through pb-0.5">{formatMoneyVND(original)}</div>
           ) : null}

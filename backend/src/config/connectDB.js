@@ -4,9 +4,6 @@ const connectDB = async () => {
   try {
     const mongoUri = process.env.MONGO_URI || process.env.MONGODB_URI;
     await mongoose.connect(mongoUri);
-    // if (process.env.NODE_ENV !== "production") {
-    //   console.log("Đã kết nối MongoDB");
-    // }
   } catch (error) {
     console.error("Kết nối MongoDB thất bại:", error.message);
     process.exit(1);

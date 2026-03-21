@@ -6,6 +6,8 @@ const discountCodeRouter = require("./discountCode.route");
 const orderRouter = require("./order.route");
 const geoRouter = require("./geo.route");
 const reviewRouter = require("./review.route");
+const aiRouter = require("./ai.route");
+const statsRouter = require("./stats.route");
 
 module.exports = (app) => {
   app.use("/api/auth", authRouter);
@@ -16,5 +18,7 @@ module.exports = (app) => {
   app.use("/api/orders", orderRouter);
   app.use("/api/geo", geoRouter);
   app.use("/api/reviews", reviewRouter);
+  app.use("/api/ai", aiRouter);
+  app.use("/api/stats", statsRouter);
   // app.use("/api", authRouter);
 };

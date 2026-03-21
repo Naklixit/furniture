@@ -1,4 +1,5 @@
 const DiscountCode = require("../models/DiscountCode.model");
+const mongoose = require("mongoose");
 
 const {
   escapeRegex,
@@ -28,7 +29,6 @@ const parseDateInput = (value, mode) => {
   const s = value.trim();
   if (!s) return null;
 
-  // Accept date-only string: YYYY-MM-DD (treat as local day start/end)
   const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (m) {
     const year = Number(m[1]);
@@ -188,6 +188,80 @@ const validatePayload = (body, { partial = false, current = null } = {}) => {
   return { ok: true, updates };
 };
 
+const listAvailableDiscountCodes = async (req, res, next) => {
+  try {
+    const userId = req.auth?.userId;
+    if (!userId)
+      return res.status(401).json({ message: "Không có quyền truy cập" });
+
+    const now = new Date();
+    const limitRaw = parsePositiveInt(req.query?.limit, 10);
+    const limit = Math.min(Math.max(1, limitRaw), 30);
+
+    const userObjectId = new mongoose.Types.ObjectId(String(userId));
+
+    const items = await DiscountCode.aggregate([
+      {
+        $match: {
+          isActive: true,
+          remainingUses: { $gt: 0 },
+          $and: [
+            {
+              $or: [
+                { startsAt: null },
+                { startsAt: { $exists: false } },
+                { startsAt: { $lte: now } },
+              ],
+            },
+            {
+              $or: [
+                { endsAt: null },
+                { endsAt: { $exists: false } },
+                { endsAt: { $gte: now } },
+              ],
+            },
+          ],
+        },
+      },
+      {
+        $addFields: {
+          isUsedByMe: { $in: [userObjectId, "$usedBy"] },
+          hasEndsAt: {
+            $cond: [{ $ifNull: ["$endsAt", false] }, 1, 0],
+          },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          id: "$_id",
+          code: 1,
+          percentOff: 1,
+          minOrderValue: 1,
+          remainingUses: 1,
+          startsAt: 1,
+          endsAt: 1,
+          isUsedByMe: 1,
+        },
+      },
+      {
+        $sort: {
+          isUsedByMe: 1,
+          hasEndsAt: -1,
+          endsAt: 1,
+          percentOff: -1,
+          createdAt: -1,
+        },
+      },
+      { $limit: limit },
+    ]);
+
+    return res.json({ items });
+  } catch (err) {
+    return next(err);
+  }
+};
+
 const listDiscountCodes = async (req, res, next) => {
   try {
     const requestedPage = parsePositiveInt(req.query?.page, 1);
@@ -311,7 +385,6 @@ const applyDiscountCode = async (req, res, next) => {
 
     const now = new Date();
 
-    // Atomic decrement remainingUses when all conditions are satisfied.
     const updated = await DiscountCode.findOneAndUpdate(
       {
         code,
@@ -433,4 +506,5 @@ module.exports = {
   deleteDiscountCode,
   applyDiscountCode,
   validateDiscountCode,
+  listAvailableDiscountCodes,
 };

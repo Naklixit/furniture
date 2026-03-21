@@ -7,6 +7,7 @@ const {
   listProducts,
   getProductById,
   getProductBySlug,
+  getSimilarProducts,
   createProduct,
   updateProduct,
   deleteProduct,
@@ -15,6 +16,7 @@ const {
 
 router.get("/", optionalAuth, listProducts);
 router.get("/by-slug/:slug", optionalAuth, getProductBySlug);
+router.get("/by-slug/:slug/similar", optionalAuth, getSimilarProducts);
 router.get("/:id", optionalAuth, getProductById);
 
 router.post("/", requireAdmin, createProduct);

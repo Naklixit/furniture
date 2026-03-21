@@ -38,7 +38,7 @@ const reviewSchema = new mongoose.Schema(
     },
     content: {
       type: String,
-      required: true,
+      default: "",
       trim: true,
       maxlength: 2000,
     },
@@ -55,7 +55,7 @@ const reviewSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
-reviewSchema.index({ userId: 1, productId: 1 }, { unique: true });
+reviewSchema.index({ userId: 1, productId: 1, orderId: 1 }, { unique: true });
 reviewSchema.index({ productId: 1, createdAt: -1 });
 
 module.exports = mongoose.model("Review", reviewSchema);

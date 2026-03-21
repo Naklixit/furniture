@@ -91,7 +91,6 @@ const orderSchema = new mongoose.Schema(
       index: true,
     },
 
-    
     inventoryAdjusted: { type: Boolean, default: false, index: true },
     inventoryAdjustedAt: { type: Date, default: null },
     inventoryRestoredAt: { type: Date, default: null },

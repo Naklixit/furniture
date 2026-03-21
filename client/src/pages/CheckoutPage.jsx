@@ -51,7 +51,7 @@ function Card({ children, className = "" }) {
   return (
     <div
       className={
-        "rounded-3xl border border-gray-200/70 bg-white shadow-[0_8px_30px_rgba(15,23,42,0.06)] " +
+        "rounded-3xl border border-gray-200/70 bg-white shadow-[0_8px_30px_rgba(15,23,42,0.06)] anim-fade-up " +
         className
       }
     >
@@ -286,7 +286,7 @@ export default function CheckoutPage() {
       <Header />
 
       <main className="max-w-7xl mx-auto px-6 py-10 w-full flex-1">
-        <div className="flex items-start justify-between gap-6">
+        <div className="flex items-start justify-between gap-6 anim-fade-up">
           <div>
             <div className="inline-flex items-center gap-2 text-slate-900 font-bold text-xl">
               <span className="inline-flex w-9 h-9 rounded-2xl bg-teal-600 text-white items-center justify-center shadow-sm">

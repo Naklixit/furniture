@@ -65,14 +65,6 @@ const recomputeProductRating = async (productId) => {
         isActive: true,
       },
     },
-    // Ensure unique-per-user aggregation, in case historical data had duplicates
-    { $sort: { createdAt: -1 } },
-    {
-      $group: {
-        _id: "$userId",
-        rating: { $first: "$rating" },
-      },
-    },
     {
       $group: {
         _id: null,
@@ -153,11 +145,13 @@ const createReview = async (req, res, next) => {
         .json({ message: "Sản phẩm không thuộc đơn hàng này" });
     }
 
-    const exists = await Review.findOne({ userId, productId }).select("_id");
+    const exists = await Review.findOne({ userId, productId, orderId }).select(
+      "_id",
+    );
     if (exists) {
-      return res
-        .status(409)
-        .json({ message: "Bạn đã đánh giá sản phẩm này rồi" });
+      return res.status(409).json({
+        message: "Bạn đã đánh giá sản phẩm này trong đơn hàng này rồi",
+      });
     }
 
     const productExists =
@@ -244,4 +238,37 @@ const listReviewsByProduct = async (req, res, next) => {
   }
 };
 
-module.exports = { createReview, listReviewsByProduct };
+const getLatestReviews = async (req, res, next) => {
+  try {
+    const limit = Math.min(parsePositiveInt(req.query?.limit, 10), 20);
+
+    const items = await Review.find({ isActive: true, rating: { $gte: 4 } })
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .populate("userId", "fullName")
+      .populate("productId", "name slug");
+
+    const result = items.map((r) => ({
+      id: r._id,
+      user: r.userId
+        ? { id: r.userId._id || r.userId, fullName: r.userId.fullName }
+        : null,
+      product: r.productId
+        ? {
+            id: r.productId._id || r.productId,
+            name: r.productId.name,
+            slug: r.productId.slug,
+          }
+        : null,
+      rating: Number(r.rating || 0),
+      content: r.content || "",
+      createdAt: r.createdAt,
+    }));
+
+    return res.json({ items: result });
+  } catch (err) {
+    return next(err);
+  }
+};
+
+module.exports = { createReview, listReviewsByProduct, getLatestReviews };

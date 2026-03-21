@@ -57,15 +57,11 @@ const pickOrder = (o) => {
 };
 
 const generateOrderCode = async () => {
-  // Looks like: A85088 (6 chars)
   for (let i = 0; i < 10; i += 1) {
     const code = `A${Math.random().toString(16).slice(2, 7).toUpperCase()}`;
-    // Ensure length 6
     const fixed = (code + "00000").slice(0, 6);
     const exists = await Order.findOne({ orderCode: fixed }).select("_id");
     if (exists) continue;
-
-    // Also avoid collisions with pending VNPay sessions
     const pendingExists = await VnpayPending.findOne({
       orderCode: fixed,
     }).select("_id");
@@ -98,9 +94,7 @@ const consumeDiscountIfNeeded = async ({ order }) => {
       order.discount.consumed = true;
       await order.save();
     }
-  } catch {
-    // best-effort
-  }
+  } catch {}
 };
 
 const createOrderCOD = async (req, res, next) => {
@@ -171,8 +165,7 @@ const createVnpayPayment = async (req, res, next) => {
     });
 
     const returnUrl = `${getServerBaseUrl(req)}/api/orders/vnpay/return`;
-
-    // Create a pending VNPay session (NOT an Order). Order will be created only after payment success.
+    //Tạo bản ghi tạm thời cho giao dịch VNPay (sau này sẽ tạo đơn hàng chính thức khi VNPay callback)
     let pending = null;
     for (let i = 0; i < 5; i += 1) {
       const orderCode = await generateOrderCode();
@@ -214,12 +207,8 @@ const createVnpayPayment = async (req, res, next) => {
         .status(500)
         .json({ message: "Không thể khởi tạo giao dịch VNPay" });
     }
-
     try {
-      // NOTE: vnpay.buildPaymentUrl() will multiply vnp_Amount by 100 internally.
-      // So we pass the amount in VND here.
       const amount = Math.max(0, Math.round(Number(pending.total || 0)));
-
       const paymentUrl = vnpay.buildPaymentUrl({
         vnp_Amount: amount,
         vnp_IpAddr: getIpAddress(req),
@@ -276,7 +265,6 @@ const vnpayReturn = async (req, res, next) => {
       ? await Order.findOne({ "payment.vnpay.txnRef": txnRef })
       : null;
 
-    // Prefer existing created order (idempotency), fallback to pending session.
     const clientBase =
       (existingOrder?.payment?.vnpay?.clientBaseUrl
         ? String(existingOrder.payment.vnpay.clientBaseUrl)
@@ -287,7 +275,6 @@ const vnpayReturn = async (req, res, next) => {
           : "") || getClientBaseUrl();
 
     if (existingOrder) {
-      // Order already created for this txnRef; just redirect based on its payment status.
       const ok = existingOrder.payment?.status === "paid";
       const q = ok
         ? `result=success&orderId=${encodeURIComponent(String(existingOrder._id))}`
@@ -321,7 +308,6 @@ const vnpayReturn = async (req, res, next) => {
     };
 
     if (verify?.isSuccess && responseCode === "00") {
-      // Create the real Order only on successful payment.
       let created = null;
       try {
         created = await Order.create({
@@ -398,7 +384,7 @@ const vnpayReturn = async (req, res, next) => {
     return next(err);
   }
 };
-
+//Lấy chi tiết đơn hàng của chính mình
 const getMyOrderById = async (req, res, next) => {
   try {
     const id = req.params?.id;
@@ -416,7 +402,7 @@ const getMyOrderById = async (req, res, next) => {
     return next(err);
   }
 };
-
+//Lấy danh sách đơn hàng của chính mình (có phân trang, lọc trạng thái)
 const listMyOrders = async (req, res, next) => {
   try {
     const userId = req.auth?.userId;
@@ -551,7 +537,6 @@ const updateOrderStatusAdmin = async (req, res, next) => {
     if (!order)
       return res.status(404).json({ message: "Không tìm thấy đơn hàng" });
 
-    // Best-effort transactional inventory update (falls back if transactions unsupported)
     const actorId = req.auth?.userId || null;
     try {
       const session = await mongoose.startSession();
@@ -579,7 +564,6 @@ const updateOrderStatusAdmin = async (req, res, next) => {
       await order.save();
     }
 
-    // Consume discount when COD order is completed
     if (nextStatus === "completed" && order.payment?.method === "COD") {
       await consumeDiscountIfNeeded({ order });
     }
@@ -592,14 +576,11 @@ const updateOrderStatusAdmin = async (req, res, next) => {
     return next(err);
   }
 };
-
+//Gọi Nominatim API để gợi ý địa chỉ khi nhập
 const geoAutocomplete = async (req, res, next) => {
   try {
     const input = normalizeText(req.query?.input);
     if (!input) return res.json({ items: [] });
-
-    // OpenStreetMap Nominatim (no Google Maps API)
-    // NOTE: Nominatim has usage policies; keep queries lightweight.
     const endpoint = "https://nominatim.openstreetmap.org/search";
     const r = await axios.get(endpoint, {
       params: {
@@ -648,7 +629,7 @@ const geoAutocomplete = async (req, res, next) => {
     return next(err);
   }
 };
-
+//Chuyển đổi tọa độ thành địa chỉ (ví dụ khi dùng định vị GPS)
 const geoReverse = async (req, res, next) => {
   try {
     const lat = Number(req.query?.lat);

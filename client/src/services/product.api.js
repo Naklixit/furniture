@@ -5,6 +5,12 @@ export const listProductsApi = ({
   page = 1,
   limit = 10,
   categoryId = "",
+  minPrice = "",
+  maxPrice = "",
+  brands = "",
+  inStock = false,
+  onSale = false,
+  minRating = "",
   includeHidden = false,
   sort = "new",
 } = {}) => {
@@ -14,6 +20,12 @@ export const listProductsApi = ({
       page,
       limit,
       categoryId: categoryId || "",
+      minPrice: minPrice === "" ? "" : minPrice,
+      maxPrice: maxPrice === "" ? "" : maxPrice,
+      brands: brands || "",
+      inStock: inStock ? "true" : "false",
+      onSale: onSale ? "true" : "false",
+      minRating: minRating === "" ? "" : minRating,
       includeHidden: includeHidden ? "true" : "false",
       sort,
     },
@@ -26,6 +38,15 @@ export const getProductByIdApi = (id) => {
 
 export const getProductBySlugApi = (slug) => {
   return axiosClient.get(`/products/by-slug/${slug}`);
+};
+
+export const getSimilarProductsApi = (slug, { limit = 8 } = {}) => {
+  return axiosClient.get(
+    `/products/by-slug/${encodeURIComponent(slug)}/similar`,
+    {
+      params: { limit },
+    },
+  );
 };
 
 export const createProductApi = (data) => {

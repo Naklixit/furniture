@@ -2,7 +2,7 @@ const express = require("express");
 const bodyParser = require("body-parser");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
-require("dotenv").config();
+require("dotenv").config({ override: true });
 const connectDB = require("./config/connectDB.js");
 const routes = require("./routes/index.routes.js");
 const app = express();
@@ -26,7 +26,29 @@ app.use(
 app.use(cookieParser());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
-connectDB();
+connectDB().then(async () => {
+  try {
+    const mongoose = require("mongoose");
+    const reviewCol = mongoose.connection.collection("reviews");
+    const indexes = await reviewCol.indexes();
+    const oldIdx = indexes.find(
+      (idx) =>
+        idx.unique &&
+        idx.key?.userId === 1 &&
+        idx.key?.productId === 1 &&
+        !idx.key?.orderId,
+    );
+    if (oldIdx) {
+      await reviewCol.dropIndex(oldIdx.name);
+      console.log(`[migrate] Dropped old review index "${oldIdx.name}"`);
+    }
+  } catch (e) {
+    // Ignore if collection/index doesn't exist yet
+    if (!/ns not found|index not found/i.test(String(e?.message || ""))) {
+      console.warn("[migrate] Review index migration warning:", e?.message);
+    }
+  }
+});
 routes(app);
 app.use((err, req, res, next) => {
   let statusCode = err.statusCode || 500;

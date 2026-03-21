@@ -13,6 +13,9 @@ const TABS = [
   { key: "discount", label: "Giảm giá" },
 ];
 
+const HOME_PRODUCTS_LIMIT = 12;
+const FEATURED_MIN_RATING = 4;
+
 const getDiscountRatio = (p) => {
   const original = Number(p?.originalPrice || 0);
   const sale = Number(p?.salePrice || 0);
@@ -60,7 +63,13 @@ const HomeFeaturedProductsSection = ({ toast }) => {
   const filtered = useMemo(() => {
     const list = Array.isArray(products) ? products : [];
     if (tab === "featured") {
-      return [...list]
+      return list
+        .filter((p) => {
+          const r = Number(p?.ratingAvg || 0);
+          const c = Number(p?.ratingCount || 0);
+          return Number.isFinite(r) && r >= FEATURED_MIN_RATING && Number.isFinite(c) && c > 0;
+        })
+        .slice()
         .sort((a, b) => {
           const ra = Number(a?.ratingAvg || 0);
           const rb = Number(b?.ratingAvg || 0);
@@ -70,23 +79,23 @@ const HomeFeaturedProductsSection = ({ toast }) => {
           if (cb !== ca) return cb - ca;
           return String(b?.createdAt || "").localeCompare(String(a?.createdAt || ""));
         })
-        .slice(0, 8);
+        .slice(0, HOME_PRODUCTS_LIMIT);
     }
 
     if (tab === "newest") {
       return [...list]
         .sort((a, b) => String(b?.createdAt || "").localeCompare(String(a?.createdAt || "")))
-        .slice(0, 8);
+        .slice(0, HOME_PRODUCTS_LIMIT);
     }
 
     if (tab === "discount") {
       return list
         .filter((p) => getDiscountRatio(p) > 0)
         .sort((a, b) => getDiscountRatio(b) - getDiscountRatio(a))
-        .slice(0, 8);
+        .slice(0, HOME_PRODUCTS_LIMIT);
     }
 
-    return list.slice(0, 8);
+    return list.slice(0, HOME_PRODUCTS_LIMIT);
   }, [products, tab]);
 
   useEffect(() => {
@@ -146,7 +155,7 @@ const HomeFeaturedProductsSection = ({ toast }) => {
 
         {loading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            {Array.from({ length: 8 }).map((_, i) => (
+            {Array.from({ length: HOME_PRODUCTS_LIMIT }).map((_, i) => (
               <div key={i} className="rounded-2xl border border-gray-200 bg-white p-4">
                 <div className="aspect-[4/3] rounded-xl bg-gray-100 animate-pulse" />
                 <div className="mt-4 h-4 w-5/6 bg-gray-100 rounded animate-pulse" />

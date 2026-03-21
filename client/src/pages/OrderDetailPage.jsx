@@ -190,7 +190,7 @@ export default function OrderDetailPage() {
                   </div>
                 </div>
 
-                <div className="mt-6">
+                {/* <div className="mt-6">
                   <button
                     type="button"
                     onClick={() => navigate("/profile?tab=orders")}
@@ -198,7 +198,7 @@ export default function OrderDetailPage() {
                   >
                     Về danh sách đơn hàng
                   </button>
-                </div>
+                </div> */}
               </>
             )}
           </div>

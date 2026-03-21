@@ -34,3 +34,9 @@ export const applyDiscountCodeApi = async ({ code, orderSubtotal }) => {
 export const validateDiscountCodeApi = async ({ code, orderSubtotal }) => {
   return axiosClient.post("/discount-codes/validate", { code, orderSubtotal });
 };
+
+export const listAvailableDiscountCodesApi = async ({ limit = 10 } = {}) => {
+  return axiosClient.get("/discount-codes/available", {
+    params: { limit },
+  });
+};

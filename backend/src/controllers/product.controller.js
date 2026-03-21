@@ -108,6 +108,34 @@ const pickProduct = (p) => {
   };
 };
 
+const pickProductAgg = (p) => {
+  return {
+    id: p._id,
+    name: p.name,
+    slug: p.slug,
+    categoryId: p.categoryId,
+    category: p.category
+      ? {
+          id: p.category.id,
+          name: p.category.name,
+          slug: p.category.slug,
+        }
+      : null,
+    brand: p.brand || "",
+    originalPrice: p.originalPrice,
+    salePrice: p.salePrice,
+    stock: p.stock,
+    description: p.description || "",
+    specs: p.specs,
+    images: p.images,
+    ratingAvg: Number(p.ratingAvg || 0),
+    ratingCount: Number(p.ratingCount || 0),
+    isActive: Boolean(p.isActive),
+    createdAt: p.createdAt,
+    updatedAt: p.updatedAt,
+  };
+};
+
 const listProducts = async (req, res, next) => {
   try {
     const requestedPage = parsePositiveInt(req.query?.page, 1);
@@ -124,27 +152,94 @@ const listProducts = async (req, res, next) => {
       String(req.query?.includeHidden || "").toLowerCase() === "true";
     const isAdmin = req.auth?.role === "admin";
 
+    const sortKey =
+      typeof req.query?.sort === "string" ? req.query.sort : "new";
+    const wantsRelevance = sortKey === "relevance";
+
     const filter = {};
     if (!(wantsHidden && isAdmin)) {
       filter.isActive = true;
     }
 
     if (search) {
-      const rx = new RegExp(escapeRegex(search), "i");
-      filter.$or = [{ name: rx }, { slug: rx }, { brand: rx }];
+      if (wantsRelevance) {
+        // Use text search + textScore for relevance sorting (requires text index on Product).
+        filter.$text = { $search: search };
+      } else {
+        const rx = new RegExp(escapeRegex(search), "i");
+        filter.$or = [{ name: rx }, { slug: rx }, { brand: rx }];
+      }
     }
 
     if (categoryId && mongoose.isValidObjectId(categoryId)) {
-      filter.categoryId = categoryId;
+      filter.categoryId = new mongoose.Types.ObjectId(categoryId);
+    }
+
+    const inStock = String(req.query?.inStock || "").toLowerCase() === "true";
+    if (inStock) {
+      filter.stock = { $gt: 0 };
+    }
+
+    const minRatingRaw = req.query?.minRating;
+    const minRating =
+      minRatingRaw === null || minRatingRaw === undefined || minRatingRaw === ""
+        ? null
+        : Number(minRatingRaw);
+    if (minRating !== null && Number.isFinite(minRating)) {
+      filter.ratingAvg = { $gte: Math.max(0, Math.min(5, minRating)) };
+    }
+
+    const brandsRaw =
+      typeof req.query?.brands === "string" ? req.query.brands.trim() : "";
+    if (brandsRaw) {
+      const brands = brandsRaw
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .slice(0, 20);
+      if (brands.length) {
+        const ors = brands.map((b) => ({
+          brand: new RegExp(`^${escapeRegex(b)}$`, "i"),
+        }));
+        if (filter.$or) {
+          filter.$and = [...(filter.$and || []), { $or: ors }];
+        } else {
+          filter.$or = ors;
+        }
+      }
     }
 
     const minPrice = parseNonNegativeNumber(req.query?.minPrice, null);
     const maxPrice = parseNonNegativeNumber(req.query?.maxPrice, null);
-    if (minPrice !== null || maxPrice !== null) {
-      const priceKey = "salePrice";
-      filter[priceKey] = {};
-      if (minPrice !== null) filter[priceKey].$gte = minPrice;
-      if (maxPrice !== null) filter[priceKey].$lte = maxPrice;
+
+    const onSale = String(req.query?.onSale || "").toLowerCase() === "true";
+
+    const hasPriceRange = minPrice !== null || maxPrice !== null;
+    if (hasPriceRange || onSale) {
+      const saleValidExpr = {
+        $and: [
+          { $gt: ["$salePrice", 0] },
+          { $lt: ["$salePrice", "$originalPrice"] },
+        ],
+      };
+
+      const effectivePriceExpr = {
+        $cond: [saleValidExpr, "$salePrice", "$originalPrice"],
+      };
+
+      const exprParts = [];
+      if (hasPriceRange) {
+        if (minPrice !== null)
+          exprParts.push({ $gte: [effectivePriceExpr, minPrice] });
+        if (maxPrice !== null)
+          exprParts.push({ $lte: [effectivePriceExpr, maxPrice] });
+      }
+      if (onSale) {
+        exprParts.push(saleValidExpr);
+      }
+
+      if (exprParts.length === 1) filter.$expr = exprParts[0];
+      if (exprParts.length > 1) filter.$expr = { $and: exprParts };
     }
 
     const total = await Product.countDocuments(filter);
@@ -152,23 +247,91 @@ const listProducts = async (req, res, next) => {
     const safePage = Math.min(Math.max(1, requestedPage), totalPages);
     const skip = (safePage - 1) * limit;
 
-    const sortKey =
-      typeof req.query?.sort === "string" ? req.query.sort : "new";
-    const sort =
-      sortKey === "price_asc"
-        ? { salePrice: 1 }
-        : sortKey === "price_desc"
-          ? { salePrice: -1 }
-          : { createdAt: -1 };
+    const saleValidExpr = {
+      $and: [
+        { $gt: ["$salePrice", 0] },
+        { $lt: ["$salePrice", "$originalPrice"] },
+      ],
+    };
+    const effectivePriceExpr = {
+      $cond: [saleValidExpr, "$salePrice", "$originalPrice"],
+    };
 
-    const items = await Product.find(filter)
-      .populate("categoryId", "name slug")
-      .sort(sort)
-      .skip(skip)
-      .limit(limit);
+    const sortStage =
+      wantsRelevance && search
+        ? { score: -1, createdAt: -1 }
+        : sortKey === "price_asc"
+          ? { effectivePrice: 1, createdAt: -1 }
+          : sortKey === "price_desc"
+            ? { effectivePrice: -1, createdAt: -1 }
+            : sortKey === "rating_desc"
+              ? { ratingAvg: -1, ratingCount: -1, createdAt: -1 }
+              : { createdAt: -1 };
+
+    const addFieldsStage =
+      wantsRelevance && search
+        ? {
+            $addFields: {
+              effectivePrice: effectivePriceExpr,
+              score: { $meta: "textScore" },
+            },
+          }
+        : { $addFields: { effectivePrice: effectivePriceExpr } };
+
+    const items = await Product.aggregate([
+      { $match: filter },
+      addFieldsStage,
+      { $sort: sortStage },
+      { $skip: skip },
+      { $limit: limit },
+      {
+        $lookup: {
+          from: "categories",
+          localField: "categoryId",
+          foreignField: "_id",
+          as: "categoryObj",
+        },
+      },
+      {
+        $unwind: {
+          path: "$categoryObj",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $project: {
+          name: 1,
+          slug: 1,
+          categoryId: 1,
+          brand: 1,
+          originalPrice: 1,
+          salePrice: 1,
+          stock: 1,
+          description: 1,
+          specs: 1,
+          images: 1,
+          ratingAvg: 1,
+          ratingCount: 1,
+          isActive: 1,
+          createdAt: 1,
+          updatedAt: 1,
+          category: {
+            $cond: [
+              { $ifNull: ["$categoryObj", false] },
+              {
+                id: "$categoryObj._id",
+                name: "$categoryObj.name",
+                slug: "$categoryObj.slug",
+              },
+              null,
+            ],
+          },
+        },
+      },
+    ]);
 
     return res.json({
-      items: items.map(pickProduct),
+      items: items.map(pickProductAgg),
       meta: { page: safePage, limit, total, totalPages },
     });
   } catch (err) {
@@ -646,10 +809,128 @@ const setProductImages = async (req, res, next) => {
   }
 };
 
+const getSimilarProducts = async (req, res, next) => {
+  try {
+    const slug =
+      typeof req.params?.slug === "string"
+        ? req.params.slug.trim().toLowerCase()
+        : "";
+    if (!slug) return res.status(400).json({ message: "Thiếu slug" });
+
+    const current = await Product.findOne({ slug, isActive: true }).populate(
+      "categoryId",
+      "name slug",
+    );
+    if (!current)
+      return res.status(404).json({ message: "Không tìm thấy sản phẩm" });
+
+    const limit = Math.min(
+      Math.max(1, Number.parseInt(req.query?.limit, 10) || 8),
+      20,
+    );
+
+    // Collect candidates: same category, similar brand, similar material from specs.extra
+    const categoryId = current.categoryId?._id || current.categoryId;
+    const brand = (current.brand || "").trim();
+    const material = (
+      current.specs?.extra?.get?.("Chất liệu") ||
+      current.specs?.extra?.["Chất liệu"] ||
+      current.specs?.extra?.get?.("chat_lieu") ||
+      current.specs?.extra?.["chat_lieu"] ||
+      current.specs?.extra?.get?.("Material") ||
+      current.specs?.extra?.["Material"] ||
+      ""
+    ).trim();
+
+    const baseFilter = {
+      isActive: true,
+      _id: { $ne: current._id },
+    };
+
+    // 1) Same category (primary)
+    let items = [];
+    if (categoryId) {
+      items = await Product.find({ ...baseFilter, categoryId })
+        .populate("categoryId", "name slug")
+        .sort({ ratingAvg: -1, ratingCount: -1, createdAt: -1 })
+        .limit(limit * 3);
+    }
+
+    // 2) Same brand (if not enough)
+    if (items.length < limit && brand) {
+      const brandRx = new RegExp(
+        `^${brand.replace(/[.*+?^${}()|[\\]\\]/g, "\\$&")}$`,
+        "i",
+      );
+      const brandItems = await Product.find({
+        ...baseFilter,
+        brand: brandRx,
+        _id: { $nin: [current._id, ...items.map((i) => i._id)] },
+      })
+        .populate("categoryId", "name slug")
+        .sort({ ratingAvg: -1, ratingCount: -1 })
+        .limit(limit);
+      items = items.concat(brandItems);
+    }
+
+    // 3) Same material from specs.extra (if not enough)
+    if (items.length < limit && material) {
+      const matRx = new RegExp(
+        material.replace(/[.*+?^${}()|[\\]\\]/g, "\\$&"),
+        "i",
+      );
+      const matItems = await Product.find({
+        ...baseFilter,
+        _id: { $nin: [current._id, ...items.map((i) => i._id)] },
+        $or: [
+          { "specs.extra.Chất liệu": matRx },
+          { "specs.extra.chat_lieu": matRx },
+          { "specs.extra.Material": matRx },
+        ],
+      })
+        .populate("categoryId", "name slug")
+        .sort({ ratingAvg: -1, ratingCount: -1 })
+        .limit(limit);
+      items = items.concat(matItems);
+    }
+
+    // Deduplicate and score
+    const seen = new Set();
+    const unique = [];
+    for (const p of items) {
+      const id = String(p._id);
+      if (seen.has(id)) continue;
+      seen.add(id);
+      let score = 0;
+      // Same category -> +10
+      if (
+        categoryId &&
+        String(p.categoryId?._id || p.categoryId) === String(categoryId)
+      )
+        score += 10;
+      // Same brand -> +5
+      if (brand && (p.brand || "").toLowerCase() === brand.toLowerCase())
+        score += 5;
+      // Rating bonus
+      score += Number(p.ratingAvg || 0);
+      score += Math.min(2, Math.log10(Number(p.ratingCount || 0) + 1));
+      unique.push({ product: p, score });
+    }
+
+    unique.sort((a, b) => b.score - a.score);
+    const result = unique.slice(0, limit).map((x) => pickProduct(x.product));
+
+    return res.json({ items: result });
+  } catch (err) {
+    return next(err);
+  }
+};
+
 module.exports = {
   listProducts,
   getProductById,
   getProductBySlug,
+  getSimilarProducts,
   createProduct,
   updateProduct,
   deleteProduct,

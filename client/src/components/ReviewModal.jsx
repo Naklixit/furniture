@@ -113,8 +113,8 @@ export default function ReviewModal({ open, order, initialProductId, onClose, on
     if (!productId) return "Vui lòng chọn sản phẩm";
     if (!rating || rating < 1 || rating > 5) return "Vui lòng chọn số sao";
     const cleaned = normalizeSpaces(content);
-    if (cleaned.length < 10) return "Nội dung đánh giá quá ngắn";
-    if (cleaned.length > 600) return "Nội dung đánh giá quá dài";
+    if (!cleaned) return "Vui lòng nhập nội dung đánh giá";
+    if (cleaned.length > 2000) return "Nội dung đánh giá quá dài (tối đa 2000 ký tự)";
     if (looksLikeSpamOrContactInfo(cleaned)) return "Không được chứa link/thông tin liên hệ";
     if (/(.)\1{6,}/.test(cleaned)) return "Nội dung đánh giá không hợp lệ";
     return "";
@@ -206,8 +206,8 @@ export default function ReviewModal({ open, order, initialProductId, onClose, on
                             )}
                           </div>
                           <div className="min-w-0">
-                            <div className="text-sm font-bold text-gray-900 line-clamp-2">{it?.name || ""}</div>
-                            <div className="text-xs text-gray-600">SL: {Number(it?.qty || 0)}</div>
+                            <div className="text-sm font-semibold text-gray-900 line-clamp-2">{it?.name || ""}</div>
+                            <div className="text-xs font-semibold text-gray-600">SL: {Number(it?.qty || 0)}</div>
                           </div>
                         </button>
                       );

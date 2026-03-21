@@ -46,7 +46,6 @@ const buildOrderFromRequest = async ({ req, paymentMethod }) => {
     })
     .filter(Boolean);
 
-  // Consolidate duplicate productId lines to validate stock accurately
   const consolidatedMap = new Map();
   for (const it of normalizedItems) {
     const id = String(it.productId);
@@ -64,7 +63,7 @@ const buildOrderFromRequest = async ({ req, paymentMethod }) => {
   const products = await Product.find({ _id: { $in: ids }, isActive: true });
   const productById = new Map(products.map((p) => [String(p._id), p]));
 
-  // Validate all exist
+
   for (const it of consolidatedItems) {
     if (!productById.has(String(it.productId))) {
       return {
@@ -105,7 +104,6 @@ const buildOrderFromRequest = async ({ req, paymentMethod }) => {
 
   const shippingFee = 0;
 
-  // Discount (validate only; do NOT consume here)
   const discountCode = normalizeCode(
     req.body?.discountCode || req.body?.discount?.code,
   );
