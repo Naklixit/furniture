@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ShoppingCart, Star } from "lucide-react";
+import { Eye, ShoppingCart, Star } from "lucide-react";
 import { useCartStore } from "../stores/cart.store";
 import { useToast } from "../context/useToast";
 
@@ -114,7 +114,7 @@ const ProductCard = ({ product, showAddToCart = true, onAddToCart, className = "
   return (
     <div
       className={
-        "group rounded-2xl border border-gray-200 bg-white shadow-sm hover:shadow-md transition overflow-hidden flex flex-col h-full " +
+        "group rounded-2xl border border-gray-200 bg-white shadow-sm hover:shadow-md transition-all overflow-hidden flex flex-col h-full hover:-translate-y-0.5 " +
         className
       }
       onMouseEnter={() => setHovered(true)}
@@ -122,7 +122,11 @@ const ProductCard = ({ product, showAddToCart = true, onAddToCart, className = "
     >
       <div className="relative aspect-[4/3] bg-gray-50">
         {imageUrl ? (
-          <img src={imageUrl} alt={product?.name || ""} className="w-full h-full object-cover" />
+          <img
+            src={imageUrl}
+            alt={product?.name || ""}
+            className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-[1.03]"
+          />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-gray-400 text-sm">No image</div>
         )}
@@ -134,6 +138,41 @@ const ProductCard = ({ product, showAddToCart = true, onAddToCart, className = "
             </span>
           </div>
         ) : null}
+
+        <div
+          className={
+            "absolute top-3 right-3 flex flex-col gap-2 transition-all duration-200 " +
+            (hovered ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-1 pointer-events-none")
+          }
+        >
+          <button
+            type="button"
+            aria-label="Xem chi tiết"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              navigate(`/products/${encodeURIComponent(product?.slug || "")}`);
+            }}
+            className="w-10 h-10 rounded-full bg-white/90 border border-gray-200 hover:bg-gray-50 text-gray-700 shadow-sm flex items-center justify-center"
+          >
+            <Eye size={18} />
+          </button>
+
+          {showAddToCart ? (
+            <button
+              type="button"
+              aria-label="Thêm vào giỏ hàng"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleAdd();
+              }}
+              className="w-10 h-10 rounded-full bg-white/90 border border-gray-200 hover:bg-gray-50 text-gray-700 shadow-sm flex items-center justify-center"
+            >
+              <ShoppingCart size={18} />
+            </button>
+          ) : null}
+        </div>
 
         {showAddToCart ? (
           <div

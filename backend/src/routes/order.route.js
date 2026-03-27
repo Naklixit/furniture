@@ -4,6 +4,9 @@ const {
   createOrderCOD,
   createVnpayPayment,
   vnpayReturn,
+  createMomoPayment,
+  momoReturn,
+  momoIpn,
   getMyOrderById,
   listMyOrders,
   cancelMyOrder,
@@ -17,6 +20,10 @@ const router = express.Router();
 router.post("/", requireAuth, createOrderCOD);
 router.post("/vnpay/create", requireAuth, createVnpayPayment);
 router.get("/vnpay/return", vnpayReturn);
+
+router.post("/momo/create", requireAuth, createMomoPayment);
+router.get("/momo/return", momoReturn);
+router.post("/momo/ipn", momoIpn);
 
 // Admin
 router.get("/admin/list", requireAdmin, listOrdersAdmin);

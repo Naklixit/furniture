@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Navigate, useNavigate, useParams } from "react-router-dom";
-import { ChevronLeft, Clock, Package } from "lucide-react";
+import { ChevronLeft, Armchair, Truck, UserRound, Phone, MapPin } from "lucide-react";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import { useAuth } from "../context/useAuth";
@@ -102,7 +102,7 @@ export default function OrderDetailPage() {
         <button
           type="button"
           onClick={() => navigate(-1)}
-          className="inline-flex items-center gap-2 text-sm font-semibold text-gray-700 hover:text-teal-700 transition-colors"
+          className="h-10 px-4 rounded-xl border border-zinc-200 bg-white inline-flex items-center gap-2 text-sm font-semibold text-zinc-700 hover:bg-zinc-50 hover:text-emerald-700 transition-colors"
         >
           <ChevronLeft size={18} />
           Quay lại
@@ -141,8 +141,49 @@ export default function OrderDetailPage() {
               <>
                 <div className="rounded-2xl border border-gray-200 overflow-hidden transition-shadow duration-200 hover:shadow-sm">
                   <div className="px-5 py-4 bg-gray-50 border-b border-gray-100 flex items-center gap-3">
+                    <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-teal-50 border border-teal-100">
+                      <Truck size={16} className="text-teal-700" />
+                    </span>
+                    <div className="text-sm font-bold text-gray-900">Thông tin giao hàng</div>
+                  </div>
+
+                  <div className="px-5 py-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="rounded-xl border border-gray-200 bg-white p-4">
+                      <div className="flex items-center gap-2 text-xs font-semibold text-gray-600">
+                        <UserRound size={14} className="text-gray-500" />
+                        Người nhận
+                      </div>
+                      <div className="mt-1 text-sm font-bold text-gray-900">
+                        {order?.customer?.fullName || "—"}
+                      </div>
+                    </div>
+
+                    <div className="rounded-xl border border-gray-200 bg-white p-4">
+                      <div className="flex items-center gap-2 text-xs font-semibold text-gray-600">
+                        <Phone size={14} className="text-gray-500" />
+                        Số điện thoại
+                      </div>
+                      <div className="mt-1 text-sm font-bold text-gray-900">
+                        {order?.customer?.phoneNumber || "—"}
+                      </div>
+                    </div>
+
+                    <div className="sm:col-span-2 rounded-xl border border-gray-200 bg-white p-4">
+                      <div className="flex items-center gap-2 text-xs font-semibold text-gray-600">
+                        <MapPin size={14} className="text-gray-500" />
+                        Địa chỉ giao hàng
+                      </div>
+                      <div className="mt-1 text-sm font-semibold text-gray-900 whitespace-pre-line">
+                        {order?.shipping?.address || "—"}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-6 rounded-2xl border border-gray-200 overflow-hidden transition-shadow duration-200 hover:shadow-sm">
+                  <div className="px-5 py-4 bg-gray-50 border-b border-gray-100 flex items-center gap-3">
                     <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-amber-50 border border-amber-200">
-                      <Clock size={16} className="text-amber-700" />
+                      <Armchair size={16} className="text-amber-700" />
                     </span>
                     <div className="text-sm font-bold text-gray-900">Sản phẩm</div>
                   </div>
@@ -174,17 +215,8 @@ export default function OrderDetailPage() {
                       </div>
                     ))}
                   </div>
-                </div>
 
-                <div className="mt-6 rounded-2xl border border-gray-200 overflow-hidden transition-shadow duration-200 hover:shadow-sm">
-                  <div className="px-5 py-4 bg-gray-50 border-b border-gray-100 flex items-center gap-3">
-                    <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-teal-50 border border-teal-100">
-                      <Package size={16} className="text-teal-700" />
-                    </span>
-                    <div className="text-sm font-bold text-gray-900">Tóm tắt</div>
-                  </div>
-
-                  <div className="px-5 py-4 flex items-center justify-between">
+                  <div className="px-5 py-4 border-t border-gray-100 flex items-center justify-between">
                     <div className="text-sm text-gray-500">Tổng tiền</div>
                     <div className="text-base font-extrabold text-teal-700">{formatMoneyVND(order?.total)}</div>
                   </div>

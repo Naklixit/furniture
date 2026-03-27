@@ -82,6 +82,18 @@ const orderSchema = new mongoose.Schema(
         responseCode: { type: String, default: "", trim: true },
         rawReturn: { type: Object, default: null },
       },
+      momo: {
+        orderId: { type: String, default: "", trim: true, index: true },
+        requestId: { type: String, default: "", trim: true },
+        clientBaseUrl: { type: String, default: "", trim: true },
+        transId: { type: String, default: "", trim: true },
+        resultCode: { type: Number, default: null },
+        message: { type: String, default: "", trim: true },
+        payType: { type: String, default: "", trim: true },
+        responseTime: { type: String, default: "", trim: true },
+        extraData: { type: String, default: "", trim: true },
+        rawCallback: { type: Object, default: null },
+      },
     },
 
     status: {

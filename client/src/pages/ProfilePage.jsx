@@ -2,14 +2,14 @@ import { useEffect, useMemo, useState } from "react";
 import { Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import {
   UserRound,
-  Package,
+  ShoppingBag,
   LogOut,
   Pencil,
   Save,
   X,
   RotateCw,
   Star,
-  Clock,
+  Armchair,
   Eye,
 } from "lucide-react";
 import Header from "../components/Header";
@@ -118,7 +118,7 @@ export default function ProfilePage() {
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [ordersError, setOrdersError] = useState("");
   const [orders, setOrders] = useState([]);
-  const [ordersMeta, setOrdersMeta] = useState({ page: 1, limit: 8, total: 0, totalPages: 1 });
+  const [ordersMeta, setOrdersMeta] = useState({ page: 1, limit: 4, total: 0, totalPages: 1 });
   const [ordersStatus, setOrdersStatus] = useState("");
   const [ordersBusyId, setOrdersBusyId] = useState("");
   const [ordersReloadKey, setOrdersReloadKey] = useState(0);
@@ -289,8 +289,8 @@ export default function ProfilePage() {
       <main className="max-w-7xl mx-auto px-6 py-10 w-full flex-1">
         <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-8">
           {/* Thanh bên */}
-          <aside className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm anim-fade-up transition-shadow duration-200 hover:shadow-md">
-            <div className="bg-gradient-to-r from-teal-600 to-emerald-600 px-5 py-5 text-white">
+          <aside className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm anim-fade-up transition-shadow duration-200 hover:shadow-md self-start h-fit">
+            <div className="bg-gradient-to-r from-zinc-600 to-emerald-600 px-5 py-5 text-white">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-full bg-white/15 border border-white/20 flex items-center justify-center font-extrabold">
                   {getUserInitial(user)}
@@ -328,7 +328,7 @@ export default function ProfilePage() {
                       : "text-gray-700 border-transparent hover:bg-gray-50 hover:translate-x-[2px]")
                   }
                 >
-                  <Package size={18} className={activeTab === "orders" ? "text-teal-700" : "text-gray-500"} />
+                  <ShoppingBag size={18} className={activeTab === "orders" ? "text-teal-700" : "text-gray-500"} />
                   <span className="font-medium">Đơn hàng của tôi</span>
                 </button>
 
@@ -370,7 +370,7 @@ export default function ProfilePage() {
                 ) : null}
 
                 <div className="p-6">
-                  <div className="rounded-2xl bg-gradient-to-r from-teal-600 to-emerald-600 text-white p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition-transform duration-200 hover:-translate-y-0.5">
+                  <div className="rounded-2xl bg-gradient-to-r from-zinc-600 to-emerald-600 text-white p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition-transform duration-200 hover:-translate-y-0.5">
                     <div className="flex items-center gap-4">
                       <div className="w-14 h-14 rounded-2xl bg-white/15 border border-white/20 flex items-center justify-center">
                         <UserRound size={28} className="text-white" />
@@ -431,8 +431,8 @@ export default function ProfilePage() {
                   </div>
 
                   <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <div className="rounded-2xl border border-gray-200 bg-white p-5 transition-all duration-200 hover:shadow-md hover:-translate-y-0.5">
-                      <div className="text-sm font-bold text-gray-900">Thông tin liên hệ</div>
+                    <div className="rounded-2xl border border-teal-200 bg-white p-5 transition-all duration-200 hover:shadow-md hover:-translate-y-0.5">
+                      <div className="text-sm font-bold text-teal-900">Thông tin liên hệ</div>
                       <div className="mt-4 space-y-4">
                         <div>
                           <div className="text-xs font-semibold text-gray-600">Số điện thoại</div>
@@ -569,7 +569,7 @@ export default function ProfilePage() {
                               <div className="min-w-0">
                                 <div className="flex items-center gap-3">
                                   <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-amber-50 border border-amber-200">
-                                    <Clock size={16} className="text-amber-700" />
+                                    <Armchair size={16} className="text-amber-700" />
                                   </span>
                                   <div className="min-w-0">
                                     <div className="flex items-center gap-3 flex-wrap">

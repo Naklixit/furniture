@@ -97,7 +97,7 @@ const AdminLayout = ({
               className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-gray-100"
               onClick={() => setProfileOpen((v) => !v)}
             >
-              <span className="w-9 h-9 rounded-full bg-blue-50 text-blue-700 flex items-center justify-center">
+              <span className="w-9 h-9 rounded-full bg-teal-50 text-teal-700 flex items-center justify-center">
                 <UserIcon size={18} />
               </span>
               <div className="hidden sm:block text-left">

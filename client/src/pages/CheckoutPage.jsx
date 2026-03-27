@@ -15,7 +15,11 @@ import Footer from "../components/Footer";
 import { useAuth } from "../context/useAuth";
 import { useCartStore } from "../stores/cart.store";
 import { useToast } from "../context/useToast";
-import { createOrderCodApi, createVnpayPaymentApi } from "../services/order.api";
+import {
+  createMomoPaymentApi,
+  createOrderCodApi,
+  createVnpayPaymentApi,
+} from "../services/order.api";
 import { geoAutocompleteApi, geoReverseApi } from "../services/geo.api";
 import { MapContainer, Marker, TileLayer, useMapEvents } from "react-leaflet";
 
@@ -38,7 +42,6 @@ const PAYMENT_METHODS = [
     key: "MOMO",
     title: "Ví MoMo",
     desc: "Thanh toán qua ví điện tử MoMo",
-    disabled: true,
   },
   {
     key: "VNPAY",
@@ -269,6 +272,14 @@ export default function CheckoutPage() {
         const res = await createVnpayPaymentApi(payload);
         const url = res?.paymentUrl;
         if (!url) throw new Error("Không tạo được link thanh toán VNPay");
+        window.location.href = url;
+        return;
+      }
+
+      if (payMethod === "MOMO") {
+        const res = await createMomoPaymentApi(payload);
+        const url = res?.payUrl;
+        if (!url) throw new Error("Không tạo được link thanh toán MoMo");
         window.location.href = url;
         return;
       }

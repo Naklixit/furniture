@@ -7,6 +7,7 @@ export const createOrderCodApi = ({
   note = "",
   items,
   discountCode = "",
+  clientBaseUrl = "",
 } = {}) => {
   return axiosClient.post("/orders", {
     fullName,
@@ -15,6 +16,7 @@ export const createOrderCodApi = ({
     note,
     items: items || [],
     discountCode: discountCode || "",
+    clientBaseUrl: clientBaseUrl || "",
   });
 };
 
@@ -25,6 +27,7 @@ export const createVnpayPaymentApi = ({
   note = "",
   items,
   discountCode = "",
+  clientBaseUrl = "",
 } = {}) => {
   return axiosClient.post("/orders/vnpay/create", {
     fullName,
@@ -33,6 +36,27 @@ export const createVnpayPaymentApi = ({
     note,
     items: items || [],
     discountCode: discountCode || "",
+    clientBaseUrl: clientBaseUrl || "",
+  });
+};
+
+export const createMomoPaymentApi = ({
+  fullName,
+  phoneNumber,
+  address,
+  note = "",
+  items,
+  discountCode = "",
+  clientBaseUrl = "",
+} = {}) => {
+  return axiosClient.post("/orders/momo/create", {
+    fullName,
+    phoneNumber,
+    address,
+    note,
+    items: items || [],
+    discountCode: discountCode || "",
+    clientBaseUrl: clientBaseUrl || "",
   });
 };
 
