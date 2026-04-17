@@ -5,6 +5,7 @@ import RoleSwitch from "../users/RoleSwitch";
 import { createCategoryApi, deleteCategoryApi, updateCategoryApi } from "../../../services/category.api";
 import { useAdminCategories } from "./useAdminCategories";
 import { getPageNumbers } from "../shared/pagination";
+import { ADMIN_PER_PAGE_OPTIONS, adminPerPageLabel } from "../shared/adminPagination";
 import { useResultsAnimKey } from "../shared/useResultsAnimKey";
 
 const emptyDraft = () => ({ name: "", slug: "", description: "", isActive: true });
@@ -296,12 +297,13 @@ const CategoriesManagementPanel = ({ toast }) => {
                 setLimit(next);
                 setPage(1);
               }}
-              aria-label="Số dòng mỗi trang"
+              aria-label="Số lượng mỗi trang"
             >
-              <option value={5}>5 / page</option>
-              <option value={10}>10 / page</option>
-              <option value={20}>20 / page</option>
-              <option value={50}>50 / page</option>
+              {ADMIN_PER_PAGE_OPTIONS.map((n) => (
+                <option key={n} value={n}>
+                  {adminPerPageLabel(n)}
+                </option>
+              ))}
             </select>
 
             <button

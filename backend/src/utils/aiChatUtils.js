@@ -829,48 +829,48 @@ const enforceAndFillRecommendations = ({
   return out;
 };
 
-const buildFallbackReplyFromGroqError = (err) => {
-  const code = String(err?.response?.data?.error?.code || "");
-  const msg = String(err?.response?.data?.error?.message || err?.message || "");
-  const modelTried = String(err?.modelTried || "");
+// const buildFallbackReplyFromGroqError = (err) => {
+//   const code = String(err?.response?.data?.error?.code || "");
+//   const msg = String(err?.response?.data?.error?.message || err?.message || "");
+//   const modelTried = String(err?.modelTried || "");
 
-  if (
-    code === "model_permission_blocked_project" ||
-    code === "model_permission_blocked_org" ||
-    /^model_permission_blocked_/i.test(code) ||
-    /blocked at the project level/i.test(msg)
-  ) {
-    return (
-      `Model AI trên Groq đang bị chặn theo cấu hình quyền (project/org)${modelTried ? `: ${modelTried}` : ""}. ` +
-      "Mình tạm gợi ý theo dữ liệu sản phẩm trên website. Bạn kiểm tra Groq Console > Project Limits rồi thử lại nhé."
-    );
-  }
+//   // if (
+//   //   code === "model_permission_blocked_project" ||
+//   //   code === "model_permission_blocked_org" ||
+//   //   /^model_permission_blocked_/i.test(code) ||
+//   //   /blocked at the project level/i.test(msg)
+//   // ) {
+//   //   return (
+//   //     `Model AI trên Groq đang bị chặn theo cấu hình quyền (project/org)${modelTried ? `: ${modelTried}` : ""}. ` +
+//   //     "Mình tạm gợi ý theo dữ liệu sản phẩm trên website. Bạn kiểm tra Groq Console > Project Limits rồi thử lại nhé."
+//   //   );
+//   // }
 
-  if (
-    code === "model_decommissioned" ||
-    /decommissioned|no longer supported/i.test(msg)
-  ) {
-    return (
-      "Model AI bạn cấu hình trên Groq đã bị ngừng hỗ trợ (decommissioned). " +
-      "Mình tạm gợi ý theo dữ liệu sản phẩm trên website; bạn đổi sang model khác trong Groq Console rồi thử lại nhé."
-    );
-  }
+//   // if (
+//   //   code === "model_decommissioned" ||
+//   //   /decommissioned|no longer supported/i.test(msg)
+//   // ) {
+//   //   return (
+//   //     "Model AI bạn cấu hình trên Groq đã bị ngừng hỗ trợ (decommissioned). " +
+//   //     "Mình tạm gợi ý theo dữ liệu sản phẩm trên website; bạn đổi sang model khác trong Groq Console rồi thử lại nhé."
+//   //   );
+//   // }
 
-  if (
-    (err?.status || err?.response?.status) === 429 ||
-    /too many requests|rate|quota/i.test(msg)
-  ) {
-    return (
-      "Groq đang giới hạn tốc độ/quota nên mình tạm gợi ý theo dữ liệu sản phẩm trên website. " +
-      "Bạn thử lại sau ít phút hoặc nâng hạn mức Groq nhé."
-    );
-  }
+//   // if (
+//   //   (err?.status || err?.response?.status) === 429 ||
+//   //   /too many requests|rate|quota/i.test(msg)
+//   // ) {
+//   //   return (
+//   //     "Groq đang giới hạn tốc độ/quota nên mình tạm gợi ý theo dữ liệu sản phẩm trên website. " +
+//   //     "Bạn thử lại sau ít phút hoặc nâng hạn mức Groq nhé."
+//   //   );
+//   // }
 
-  return (
-    "Hiện dịch vụ AI đang gặp lỗi kết nối/cấu hình nên mình tạm gợi ý theo dữ liệu sản phẩm trên website. " +
-    "Bạn thử lại giúp mình nhé."
-  );
-};
+//   // return (
+//   //   "Hiện dịch vụ AI đang gặp lỗi kết nối/cấu hình nên mình tạm gợi ý theo dữ liệu sản phẩm trên website. " +
+//   //   "Bạn thử lại giúp mình nhé."
+//   // );
+// };
 
 module.exports = {
   normalizeText,
@@ -894,5 +894,4 @@ module.exports = {
   isGroqAvailabilityError,
   localFallback,
   enforceAndFillRecommendations,
-  buildFallbackReplyFromGroqError,
 };

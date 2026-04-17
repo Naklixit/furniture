@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { RotateCw, Search } from "lucide-react";
 import { useAdminOrders } from "./useAdminOrders";
 import { getPageNumbers } from "../shared/pagination";
+import { ADMIN_PER_PAGE_OPTIONS, adminPerPageLabel } from "../shared/adminPagination";
 import { useResultsAnimKey } from "../shared/useResultsAnimKey";
 import { updateAdminOrderStatusApi } from "../../../services/order.api";
 
@@ -363,10 +364,11 @@ const OrdersManagementPanel = ({ toast }) => {
               setPage(1);
             }}
             className="h-9 rounded-lg border border-gray-200 bg-white text-sm px-3"
+            aria-label="Số lượng mỗi trang"
           >
-            {[5, 10, 20, 50].map((n) => (
+            {ADMIN_PER_PAGE_OPTIONS.map((n) => (
               <option key={n} value={n}>
-                {n}/trang
+                {adminPerPageLabel(n)}
               </option>
             ))}
           </select>

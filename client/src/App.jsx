@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import HomePage from "./pages/HomePage";
@@ -18,8 +18,11 @@ import ScrollToTop from "./components/ScrollToTop";
 // import AiAssistantWidget from "./components/AiAssistantWidget";
 function App() {
   const { user, isAuthed, bootstrapped } = useAuth();
+  const location = useLocation();
   const defaultAuthedPath = user?.role === "admin" ? "/admin/dashboard" : "/";
-
+  const authPages = ["/login", "/register", "/forgot-password", "/verify-otp", "/reset-password"];
+  const isAuthPage = authPages.includes(location.pathname);
+  const shouldShowAiWidget = !isAuthPage && user?.role !== "admin";
   if (!bootstrapped) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white text-gray-700">
@@ -141,7 +144,7 @@ function App() {
         />
         <Route path="*" element={<Navigate to={isAuthed ? defaultAuthedPath : "/"} replace />} />
       </Routes>
-      {/* {user?.role === "admin" ? null : <AiAssistantWidget />} */}
+      {/* {shouldShowAiWidget && <AiAssistantWidget />} */}
     </>
   );
 }

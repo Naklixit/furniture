@@ -459,7 +459,7 @@ export default function ProductsPage() {
 
               <div
                 className={
-                  "mt-8 grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 transition-opacity " +
+                  "mt-8 grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-5 auto-rows-fr transition-opacity " +
                   (loading && items.length > 0 ? "opacity-60" : "opacity-100")
                 }
               >

@@ -43,7 +43,6 @@ export default function OrderSuccessPage() {
   const [order, setOrder] = useState(null);
 
   useEffect(() => {
-    // Clear cart only when the order is actually successful.
     if (result === "fail") return;
     clear?.();
     clearDiscount?.();

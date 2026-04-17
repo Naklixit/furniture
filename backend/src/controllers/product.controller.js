@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 const Product = require("../models/Product.model");
 const Category = require("../models/Category.model");
+const Order = require("../models/Order.model");
 const { slugify } = require("../utils/slug");
 const {
   uploadBuffer,
@@ -8,6 +9,24 @@ const {
   deleteResourcesByPrefix,
   deleteFolder,
 } = require("../services/cloudinary.service");
+
+const getQtySoldMap = async (productIds) => {
+  const ids = (Array.isArray(productIds) ? productIds : [])
+    .map((id) =>
+      mongoose.isValidObjectId(id) ? new mongoose.Types.ObjectId(id) : null,
+    )
+    .filter(Boolean);
+  if (!ids.length) return new Map();
+
+  const rows = await Order.aggregate([
+    { $match: { status: "completed", "items.productId": { $in: ids } } },
+    { $unwind: "$items" },
+    { $match: { "items.productId": { $in: ids } } },
+    { $group: { _id: "$items.productId", qtySold: { $sum: "$items.qty" } } },
+  ]);
+
+  return new Map(rows.map((r) => [String(r._id), Number(r.qtySold || 0)]));
+};
 
 const mapLimit = async (arr, limit, mapper) => {
   const list = Array.isArray(arr) ? arr : [];
@@ -19,7 +38,6 @@ const mapLimit = async (arr, limit, mapper) => {
   let nextIndex = 0;
 
   const workers = Array.from({ length: concurrency }).map(async () => {
-    // eslint-disable-next-line no-constant-condition
     while (true) {
       const current = nextIndex;
       nextIndex += 1;
@@ -62,8 +80,6 @@ const parseNonNegativeNumber = (value, fallback = 0) => {
 const ensureUniqueSlug = async ({ baseSlug, currentId }) => {
   let slug = baseSlug;
   let i = 0;
-
-  // eslint-disable-next-line no-constant-condition
   while (true) {
     const exists = await Product.findOne({
       slug,
@@ -163,7 +179,6 @@ const listProducts = async (req, res, next) => {
 
     if (search) {
       if (wantsRelevance) {
-        // Use text search + textScore for relevance sorting (requires text index on Product).
         filter.$text = { $search: search };
       } else {
         const rx = new RegExp(escapeRegex(search), "i");
@@ -330,8 +345,13 @@ const listProducts = async (req, res, next) => {
       },
     ]);
 
+    const qtySoldMap = await getQtySoldMap(items.map((p) => p._id));
+
     return res.json({
-      items: items.map(pickProductAgg),
+      items: items.map((p) => ({
+        ...pickProductAgg(p),
+        qtySold: qtySoldMap.get(String(p._id)) || 0,
+      })),
       meta: { page: safePage, limit, total, totalPages },
     });
   } catch (err) {
@@ -352,7 +372,9 @@ const getProductById = async (req, res, next) => {
       return res.status(404).json({ message: "Không tìm thấy sản phẩm" });
     }
 
-    return res.json({ product: pickProduct(p) });
+    const qtySoldMap = await getQtySoldMap([p._id]);
+    const qtySold = qtySoldMap.get(String(p._id)) || 0;
+    return res.json({ product: { ...pickProduct(p), qtySold } });
   } catch (err) {
     return next(err);
   }
@@ -377,7 +399,9 @@ const getProductBySlug = async (req, res, next) => {
       return res.status(404).json({ message: "Không tìm thấy sản phẩm" });
     }
 
-    return res.json({ product: pickProduct(p) });
+    const qtySoldMap = await getQtySoldMap([p._id]);
+    const qtySold = qtySoldMap.get(String(p._id)) || 0;
+    return res.json({ product: { ...pickProduct(p), qtySold } });
   } catch (err) {
     return next(err);
   }
@@ -698,8 +722,6 @@ const deleteProduct = async (req, res, next) => {
 
     const p = await Product.findByIdAndDelete(id);
     if (!p) return res.status(404).json({ message: "Không tìm thấy sản phẩm" });
-
-    // best-effort cleanup cloudinary
     const publicIds = [];
     if (p.images?.main?.publicId) publicIds.push(p.images.main.publicId);
     (p.images?.gallery || []).forEach(
@@ -707,7 +729,6 @@ const deleteProduct = async (req, res, next) => {
     );
     await Promise.all(publicIds.map((pid) => deleteResource(pid)));
 
-    // extra safety: delete any orphaned resources in the product folder
     const folder = `furniture/products/${p._id}`;
     await deleteResourcesByPrefix(`${folder}/`);
     await deleteFolder(folder);
@@ -735,8 +756,6 @@ const setProductImages = async (req, res, next) => {
     if (!hasAny) {
       return res.status(400).json({ message: "Thiếu file ảnh upload" });
     }
-
-    // nếu update ảnh thì yêu cầu đủ main + >=3 gallery
     if (!mainFile) {
       return res.status(400).json({ message: "Cần chọn ảnh main" });
     }
@@ -761,7 +780,6 @@ const setProductImages = async (req, res, next) => {
       ),
     ]);
 
-    // collect old ids for best-effort cleanup (avoid deleting newly overwritten ones)
     const oldPublicIds = [];
     if (p.images?.main?.publicId) oldPublicIds.push(p.images.main.publicId);
     (p.images?.gallery || []).forEach(
@@ -829,7 +847,6 @@ const getSimilarProducts = async (req, res, next) => {
       20,
     );
 
-    // Collect candidates: same category, similar brand, similar material from specs.extra
     const categoryId = current.categoryId?._id || current.categoryId;
     const brand = (current.brand || "").trim();
     const material = (
@@ -847,7 +864,6 @@ const getSimilarProducts = async (req, res, next) => {
       _id: { $ne: current._id },
     };
 
-    // 1) Same category (primary)
     let items = [];
     if (categoryId) {
       items = await Product.find({ ...baseFilter, categoryId })
@@ -856,7 +872,6 @@ const getSimilarProducts = async (req, res, next) => {
         .limit(limit * 3);
     }
 
-    // 2) Same brand (if not enough)
     if (items.length < limit && brand) {
       const brandRx = new RegExp(
         `^${brand.replace(/[.*+?^${}()|[\\]\\]/g, "\\$&")}$`,
@@ -873,7 +888,6 @@ const getSimilarProducts = async (req, res, next) => {
       items = items.concat(brandItems);
     }
 
-    // 3) Same material from specs.extra (if not enough)
     if (items.length < limit && material) {
       const matRx = new RegExp(
         material.replace(/[.*+?^${}()|[\\]\\]/g, "\\$&"),
@@ -894,7 +908,6 @@ const getSimilarProducts = async (req, res, next) => {
       items = items.concat(matItems);
     }
 
-    // Deduplicate and score
     const seen = new Set();
     const unique = [];
     for (const p of items) {
@@ -902,23 +915,25 @@ const getSimilarProducts = async (req, res, next) => {
       if (seen.has(id)) continue;
       seen.add(id);
       let score = 0;
-      // Same category -> +10
       if (
         categoryId &&
         String(p.categoryId?._id || p.categoryId) === String(categoryId)
       )
         score += 10;
-      // Same brand -> +5
       if (brand && (p.brand || "").toLowerCase() === brand.toLowerCase())
         score += 5;
-      // Rating bonus
       score += Number(p.ratingAvg || 0);
       score += Math.min(2, Math.log10(Number(p.ratingCount || 0) + 1));
       unique.push({ product: p, score });
     }
 
     unique.sort((a, b) => b.score - a.score);
-    const result = unique.slice(0, limit).map((x) => pickProduct(x.product));
+    const picked = unique.slice(0, limit).map((x) => x.product);
+    const qtySoldMap = await getQtySoldMap(picked.map((p) => p._id));
+    const result = picked.map((p) => ({
+      ...pickProduct(p),
+      qtySold: qtySoldMap.get(String(p._id)) || 0,
+    }));
 
     return res.json({ items: result });
   } catch (err) {

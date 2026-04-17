@@ -115,22 +115,18 @@ export default function CheckoutPage() {
 
   const [payMethod, setPayMethod] = useState("VNPAY");
   const [submitting, setSubmitting] = useState(false);
-
-  // Address suggestions
+//Gợi ý địa chỉ
   const [addrQuery, setAddrQuery] = useState("");
   const [addrLoading, setAddrLoading] = useState(false);
   const [addrItems, setAddrItems] = useState([]);
   const [addrOpen, setAddrOpen] = useState(false);
   const [addrError, setAddrError] = useState("");
   const addrSeqRef = useRef(0);
-
-  // Map / coordinates
   const [coords, setCoords] = useState({ lat: null, lon: null });
   const [reverseLoading, setReverseLoading] = useState(false);
   const [mapOpen, setMapOpen] = useState(false);
 
   const defaultCenter = useMemo(() => {
-    // Ho Chi Minh City
     return [10.8231, 106.6297];
   }, []);
 
@@ -200,8 +196,6 @@ export default function CheckoutPage() {
       .map((it) => ({ productId: String(it?.productId || ""), qty: Math.max(1, Number(it?.qty || 1)) }))
       .filter((x) => x.productId);
   }, [items]);
-
-  // OSM/Nominatim autocomplete (via backend)
   useEffect(() => {
     const q = String(addrQuery || "").trim();
     if (!q) {
@@ -565,11 +559,6 @@ export default function CheckoutPage() {
                 })}
               </div>
 
-              {payMethod === "VNPAY" ? (
-                <div className="mt-3 rounded-2xl bg-blue-50 border border-blue-100 px-4 py-3 text-xs text-blue-700 font-semibold">
-                  Lưu ý: Bạn sẽ được chuyển đến trang thanh toán VNPay để hoàn tất giao dịch.
-                </div>
-              ) : null}
             </Card>
 
             <Link to="/cart" className="inline-flex items-center gap-2 text-sm font-bold text-teal-700 hover:text-teal-800">

@@ -21,7 +21,6 @@ const mapLimit = async (arr, limit, mapper) => {
   let nextIndex = 0;
 
   const workers = Array.from({ length: concurrency }).map(async () => {
-    // eslint-disable-next-line no-constant-condition
     while (true) {
       const current = nextIndex;
       nextIndex += 1;
@@ -43,6 +42,7 @@ const pickReview = (r) => {
       ? {
           id: r.userId._id || r.userId,
           fullName: r.userId.fullName,
+          avatarUrl: r.userId.avatarUrl,
         }
       : null,
     rating: Number(r.rating || 0),
@@ -190,7 +190,7 @@ const createReview = async (req, res, next) => {
     const summary = await recomputeProductRating(productId);
     const populated = await Review.findById(review._id).populate(
       "userId",
-      "fullName",
+      "fullName avatarUrl",
     );
 
     return res.status(201).json({
@@ -221,7 +221,7 @@ const listReviewsByProduct = async (req, res, next) => {
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
-        .populate("userId", "fullName"),
+        .populate("userId", "fullName avatarUrl"),
     ]);
 
     return res.json({
@@ -245,23 +245,34 @@ const getLatestReviews = async (req, res, next) => {
     const items = await Review.find({ isActive: true, rating: { $gte: 4 } })
       .sort({ createdAt: -1 })
       .limit(limit)
-      .populate("userId", "fullName")
-      .populate("productId", "name slug");
+      .populate("userId", "fullName avatarUrl")
+      .populate("productId", "name slug images.main.url images.main.publicId");
 
     const result = items.map((r) => ({
       id: r._id,
       user: r.userId
-        ? { id: r.userId._id || r.userId, fullName: r.userId.fullName }
+        ? {
+            id: r.userId._id || r.userId,
+            fullName: r.userId.fullName,
+            avatarUrl: r.userId.avatarUrl,
+          }
         : null,
       product: r.productId
         ? {
             id: r.productId._id || r.productId,
             name: r.productId.name,
             slug: r.productId.slug,
+            imageUrl: r.productId?.images?.main?.url || "",
           }
         : null,
       rating: Number(r.rating || 0),
       content: r.content || "",
+      images: (r.images || []).map((img) => ({
+        url: img.url,
+        publicId: img.publicId,
+        width: Number(img.width || 0),
+        height: Number(img.height || 0),
+      })),
       createdAt: r.createdAt,
     }));
 

@@ -10,9 +10,12 @@ const {
 } = require("../utils/orderUtils");
 
 const buildOrderFromRequest = async ({ req, paymentMethod }) => {
+  // === VALIDATION STAGE 1: Kiểm tra người dùng đã đăng nhập ===
   const userId = req.auth?.userId;
   if (!userId) return { ok: false, status: 401, message: "Vui lòng đăng nhập" };
 
+  // === VALIDATION STAGE 2: Lấy & chuẩn hóa thông tin liên hệ ===
+  // Hỗ trợ cả tên từ fullName và customerFullName (khác client gửi lên)
   const fullName =
     normalizeText(req.body?.fullName) ||
     normalizeText(req.body?.customerFullName);
@@ -31,10 +34,12 @@ const buildOrderFromRequest = async ({ req, paymentMethod }) => {
   if (!address)
     return { ok: false, status: 400, message: "Địa chỉ giao hàng là bắt buộc" };
 
+  // === VALIDATION STAGE 3: Lấy các item từ giỏ hàng ===
   const rawItems = Array.isArray(req.body?.items) ? req.body.items : [];
   if (!rawItems.length)
     return { ok: false, status: 400, message: "Giỏ hàng trống" };
 
+  // Chuẩn hóa & validate các item: kiểm tra objectId, số lượng
   const normalizedItems = rawItems
     .map((it) => {
       const productId =
@@ -46,6 +51,9 @@ const buildOrderFromRequest = async ({ req, paymentMethod }) => {
     })
     .filter(Boolean);
 
+  // === VALIDATION STAGE 4: Gộp chung các item cùng sản phẩm ===
+  // VD: [{ productId: "123", qty: 2 }, { productId: "123", qty: 3 }]
+  // => [{ productId: "123", qty: 5 }]
   const consolidatedMap = new Map();
   for (const it of normalizedItems) {
     const id = String(it.productId);
@@ -59,10 +67,10 @@ const buildOrderFromRequest = async ({ req, paymentMethod }) => {
   if (!consolidatedItems.length)
     return { ok: false, status: 400, message: "Giỏ hàng không hợp lệ" };
 
+  // === VALIDATION STAGE 5: Kiểm tra sản phẩm tồn tại & hoạt động ===
   const ids = Array.from(new Set(consolidatedItems.map((i) => i.productId)));
   const products = await Product.find({ _id: { $in: ids }, isActive: true });
   const productById = new Map(products.map((p) => [String(p._id), p]));
-
 
   for (const it of consolidatedItems) {
     if (!productById.has(String(it.productId))) {
@@ -74,6 +82,7 @@ const buildOrderFromRequest = async ({ req, paymentMethod }) => {
     }
   }
 
+  // === VALIDATION STAGE 6: Kiểm tra tồn kho & tính toán giá ===
   const builtItems = [];
   let subtotal = 0;
   for (const it of consolidatedItems) {
@@ -104,6 +113,7 @@ const buildOrderFromRequest = async ({ req, paymentMethod }) => {
 
   const shippingFee = 0;
 
+  // === VALIDATION STAGE 7: Xác thực & áp dụng mã giảm giá ===
   const discountCode = normalizeCode(
     req.body?.discountCode || req.body?.discount?.code,
   );
@@ -115,6 +125,12 @@ const buildOrderFromRequest = async ({ req, paymentMethod }) => {
     const now = new Date();
     const exists = await DiscountCode.findOne({ code: discountCode });
 
+    // Kiểm tra điều kiện mã giảm giá:
+    // 1. Mã đang hoạt động (isActive)
+    // 2. Còn lượt sử dụng (remainingUses > 0)
+    // 3. Người dùng chưa dùng mã này
+    // 4. Mã chưa hết thời hạn (giữa startsAt và endsAt)
+    // 5. Đơn hàng đạt giá trị tối thiểu (minOrderValue)
     if (
       exists &&
       exists.isActive &&

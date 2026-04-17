@@ -96,7 +96,6 @@ export default function CartPage() {
         });
         setStockById((prev) => ({ ...(prev || {}), ...nextMap }));
 
-        // Clamp quantities if stock changed
         results.forEach(([id, v]) => {
           if (!v?.ok) return;
           const s = Math.max(0, Number(v.stock || 0));
@@ -123,7 +122,6 @@ export default function CartPage() {
     return () => {
       mounted = false;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [itemsKey]);
 
   const hasStockIssue = useMemo(() => {
@@ -164,14 +162,13 @@ export default function CartPage() {
       clearDiscount?.();
       toast?.info?.(`Đã bỏ áp dụng mã (đơn tối thiểu ${formatMoneyVND(min)})`);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, [total]);
 
   useEffect(() => {
     if (items.length > 0) return;
     if (discount) clearDiscount?.();
     setDiscountInput("");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items.length]);
 
   useEffect(() => {

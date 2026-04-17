@@ -55,7 +55,7 @@ const aiChat = async (req, res, next) => {
         success: true,
         reply:
           "Hiện shop của mình chỉ hỗ trợ tư vấn và bán sản phẩm nội thất trên website nên mình không có mặt hàng bạn hỏi. " +
-          "Nếu bạn cần tư vấn nội thất (ghế/bàn/sofa/tủ/giường/đèn), bạn cho mình biết không gian sử dụng, chất liệu mong muốn và ngân sách để mình gợi ý đúng hơn nhé.",
+          "Nếu bạn cần tư vấn nội thất, bạn cho mình biết không gian sử dụng, chất liệu mong muốn và ngân sách để mình gợi ý đúng hơn nhé.",
         model: "out-of-scope",
         products: [],
       });
@@ -67,7 +67,7 @@ const aiChat = async (req, res, next) => {
         success: true,
         reply:
           "Mình có thể tư vấn nội thất trên website. Bạn đang cần tìm ghế/bàn/sofa/tủ/giường/đèn cho không gian nào? " +
-          "Nếu bạn nói thêm chất liệu (gỗ/kim loại/vải/da), kích thước dự kiến và ngân sách, mình sẽ gợi ý sát nhu cầu hơn.",
+          "Nếu bạn nói thêm chất liệu, kích thước dự kiến và ngân sách, mình sẽ gợi ý sát nhu cầu hơn.",
         model: "no-product-intent",
         products: [],
       });
@@ -78,7 +78,7 @@ const aiChat = async (req, res, next) => {
     const debug =
       String(req.query?.debug || "") === "1" ? { constraints, intent } : null;
 
-    // If the user is still too vague (e.g., only says "đồ gỗ"), ask clarifying questions first.
+    // Nếu người dùng chỉ nói chất liệu mà không nói loại sản phẩm => yêu cầu làm rõ
     if (
       !constraints.categoryTokens.length &&
       constraints.hasMaterialConstraint &&
@@ -98,8 +98,12 @@ const aiChat = async (req, res, next) => {
       });
     }
 
-    // 1) text search (uses index on name/slug/brand)
+    // === 4-STAGE SEARCH PIPELINE: Tìm ra ứng cử viên sản phẩm ===
+    // Mục đích: Kết hợp nhiều chiến lược để bao quát tất cả sản phẩm phù hợp
     let candidates = [];
+
+    // STAGE 1: Text search - Tìm kiếm toàn văn bản (mô tả sản phẩm)
+    // Sử dụng MongoDB text index có sẵn
     try {
       const textHits = await Product.find({
         isActive: true,
@@ -109,11 +113,11 @@ const aiChat = async (req, res, next) => {
         .sort({ score: { $meta: "textScore" }, ratingAvg: -1, ratingCount: -1 })
         .limit(20);
       candidates = candidates.concat(textHits);
-    } catch {
-      // ignore if text search fails
-    }
+    } catch {}
 
-    // 2) regex search fallback
+    // STAGE 2: Keyword-targeted search - Tìm kiếm từ khóa rút trích từ tin nhắn
+    // VD: "ghế gỗ hiện đại" -> từ khóa: ["ghế", "gỗ", "hiện", "đại"]
+    // Tìm trong tên, slug, thương hiệu, mô tả, v.v
     if (keywords.length) {
       const ors = [];
       for (const k of keywords.slice(0, 8)) {
@@ -141,7 +145,8 @@ const aiChat = async (req, res, next) => {
       candidates = candidates.concat(regexHits);
     }
 
-    // 3) price-targeted query so budget-matching products are always in the pool
+    // STAGE 3: Price-targeted search - Tìm theo ngân sách người dùng
+    // Đảm bảo những sản phẩm trong tầm giá luôn nằm trong kho ứng cử viên
     if (constraints.hasPriceConstraint) {
       try {
         const pf = { isActive: true };
@@ -169,7 +174,8 @@ const aiChat = async (req, res, next) => {
       }
     }
 
-    // 4) rating-targeted query
+    // STAGE 4: Rating-targeted search - Tìm sản phẩm có đánh giá cao
+    // Giúp sực hiện nhu cầu người dùng ("sản phẩm tốt", "đánh giá cao")
     if (constraints.hasRatingConstraint && constraints.minRating != null) {
       try {
         const ratingHits = await Product.find({
@@ -185,7 +191,8 @@ const aiChat = async (req, res, next) => {
       }
     }
 
-    // 4b) material-targeted query (helps cases like "ghế gỗ")
+    // STAGE 4b: Material-targeted search - Tìm sản phẩm theo chất liệu
+    // VD: "ghế gỗ" => tìm các sản phẩm chứa thông tin chất liệu "gỗ"
     if (constraints.hasMaterialConstraint) {
       try {
         const materialRegexes = [];
@@ -232,9 +239,11 @@ const aiChat = async (req, res, next) => {
       }
     }
 
+    // Loại bỏ trùng lặp sản phẩm từ 4 stage trên (cùng sản phẩm có thể xuất hiện ở nhiều stage)
     candidates = uniqueById(candidates).slice(0, MAX_CANDIDATES);
 
-    // 5) If still empty, provide a small popular list so the AI can ask clarifying questions.
+    // STAGE 5: Fallback - Nếu không tìm được gì => lấy top sản phẩm phổ biến
+    // Để giúp API có đủ sản phẩm để AI có thể hỏi người dùng làm rõ hơn
     if (!candidates.length) {
       const fallback = await Product.find({ isActive: true })
         .populate("categoryId", "name slug")
@@ -245,7 +254,12 @@ const aiChat = async (req, res, next) => {
 
     const candidateCards = candidates.map(pickForAi);
 
-    // Apply hard constraints (price/category/on-sale) to the pool we send to AI.
+    // === LỌC CỨNG: Áp dụng constraints khắt khe trước khi gửi cho AI ===
+    // Nếu người dùng nói "ghế gỗ giá dưới 2 triệu", ta CHỈ gửi những sản phẩm:
+    // - Loại: ghế (category match)
+    // - Chất liệu: gỗ (material match)
+    // - Giá: < 2 triệu (price match)
+    // Không được gửi sản phẩm ngoài những tiêu chí này cho AI
     let constrainedCards = [...candidateCards];
     if (constraints.categoryTokens.length) {
       constrainedCards = constrainedCards.filter((p) =>
@@ -374,7 +388,7 @@ const aiChat = async (req, res, next) => {
     );
 
     const chosenRaw = Array.from(chosenSet)
-      .slice(0, 5)
+      .slice(0, 3)
       .map((idx) => aiPool[idx])
       .filter(Boolean);
 
@@ -382,7 +396,7 @@ const aiChat = async (req, res, next) => {
       chosen: chosenRaw,
       pool: aiPool,
       constraints,
-      limit: 5,
+      limit: 3,
     });
 
     const recommended = enforced.map((p) => ({

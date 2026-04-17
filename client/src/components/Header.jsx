@@ -1,20 +1,20 @@
 import { Link, useNavigate } from "react-router-dom";
-import { ShoppingCart, User, ChevronDown, Search, LogOut, UserRound, Package } from "lucide-react";
+import {
+  ShoppingCart,
+  User,
+  ChevronDown,
+  Search,
+  LogOut,
+  UserRound,
+  ShoppingBag,
+} from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../context/useAuth";
 import { logoutApi } from "../services/auth.api";
 import { useCartStore } from "../stores/cart.store";
 import { listProductsApi } from "../services/product.api";
 
-const formatMoneyVND = (n) => {
-  const v = Number(n || 0);
-  if (!Number.isFinite(v)) return "0đ";
-  try {
-    return v.toLocaleString("vi-VN") + "đ";
-  } catch {
-    return String(v) + "đ";
-  }
-};
+import { formatMoneyVND } from "../utils/format";
 
 function Header() {
   const navigate = useNavigate();
@@ -102,8 +102,8 @@ function Header() {
         setSuggestError(err?.message || "Không thể tìm kiếm");
         if (searchFocused) setSuggestOpen(true);
       } finally {
-        if (seq !== reqSeqRef.current) return;
-        setSuggestLoading(false);
+        // ESLint rule: không dùng `return` trong `finally` vì có thể gây hành vi khó đoán.
+        if (seq === reqSeqRef.current) setSuggestLoading(false);
       }
     }, 250);
 
@@ -384,7 +384,7 @@ function Header() {
                       navigate("/profile?tab=orders");
                     }}
                   >
-                    <Package size={18} className="text-gray-600" />
+                    <ShoppingBag size={18} className="text-gray-600" />
                     Đơn hàng của tôi
                   </button>
 

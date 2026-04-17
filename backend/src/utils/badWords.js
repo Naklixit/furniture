@@ -8,6 +8,8 @@ const DEFAULT_WORDS_PATH = path.join(
   "vn_offensive_words.txt",
 );
 
+// Chuẩn hóa dấu tiếng Việt bằng NFD (Normal Form Decomposed)
+// VD: "dấu" -> "d" + "a" + "u" + diacritic, sau đó xóa diacritics
 const stripDiacritics = (s) => {
   try {
     return String(s)
@@ -19,16 +21,19 @@ const stripDiacritics = (s) => {
   }
 };
 
+// Chuẩn hóa cho khớp chữ: loại bỏ dấu + chuyển thường + loại bỏ ký tự đặc biệt
+// Dùng để tìm từ cục với nội dung nhập vào KHÔNG có dấu (VD: "khong", "dang")
 const normalizeForMatch = (s) => {
   const lower = String(s || "").toLowerCase();
   const plain = stripDiacritics(lower);
-  // Keep spaces so we can do boundary-ish regex.
   return plain
     .replace(/[^a-z0-9\s]+/g, " ")
     .replace(/\s+/g, " ")
     .trim();
 };
 
+// Chuẩn hóa giữ nguyên dấu: chỉ loại bỏ ký tự đặc biệt, giữ dấu tiếng Việt
+// Dùng khi nội dung nhập vào CÓ dấu (VD: "không", "đang") - chính xác hơn
 const normalizeKeepDiacritics = (s) => {
   const lower = String(s || "").toLowerCase();
   try {
@@ -37,7 +42,6 @@ const normalizeKeepDiacritics = (s) => {
       .replace(/\s+/g, " ")
       .trim();
   } catch {
-    // Fallback without Unicode property escapes.
     return lower
       .replace(/[^0-9a-zA-Z\s]+/g, " ")
       .replace(/\s+/g, " ")
@@ -45,15 +49,10 @@ const normalizeKeepDiacritics = (s) => {
   }
 };
 
-// Some folded (no-diacritics) tokens collide heavily with common Vietnamese words.
-// Example: "các" -> "cac" but "cac" is also used as profanity when unaccented.
-// To prevent widespread false-positives, ignore these as standalone single-word terms.
-const AMBIGUOUS_SINGLE_WORD_FOLDED = new Set([
-  "cac", // "các"
-  "buoi", // "buổi"
-  "deo", // "đeo" vs "đéo"
-  "sang", // "sáng" is very common
-]);
+// Các từ thông dụng trong tiếng Việt mà khi loại bỏ dấu có thể trùng với từ nhạy cảm
+// VD: "các" (bình thường) -> "cac" (có thể trùng từ xin lỗi). Để tránh báo động sai lệch
+// khi nhập vào CÓ dấu, ta bỏ qua chúng trong "folded matching" nhưng vẫn kiểm tra "accented matching"
+const AMBIGUOUS_SINGLE_WORD_FOLDED = new Set(["cac", "buoi", "deo", "sang"]);
 
 const escapeRegex = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
@@ -67,9 +66,6 @@ const parseTermsFromTxt = (txt) => {
     if (line.startsWith("#")) continue;
     if (/^[-]{3,}$/.test(line)) continue;
     if (/^#{3,}$/.test(line)) continue;
-
-    // This file is intended as one-term-per-line.
-    // If a line accidentally contains inline comments, strip after '#'.
     const noComment = line.includes("#") ? line.split("#")[0].trim() : line;
     if (!noComment) continue;
 
@@ -91,7 +87,6 @@ const badWordsSingleton = (() => {
       const txt = fs.readFileSync(filePath, "utf8");
       fileTerms = parseTermsFromTxt(txt);
     } catch {
-      // If file missing/unreadable, just fall back to env list.
       fileTerms = [];
     }
 
@@ -146,13 +141,16 @@ const containsBadWords = (text) => {
 
   const { accented, foldedSafe } = badWordsSingleton();
 
-  // If input contains diacritics (or 'đ'), prefer diacritics-preserving matching first.
+  // Phát hiện xem nhập vào có dấu hay không
   const hasDiacritics = stripDiacritics(tAcc || "") !== String(tAcc || "");
 
+  // GIAI ĐOẠN 1: Nếu nhập vào CÓ dấu (chính xác)
+  // => Kiểm tra accented matching trước (chính xác cao hơn)
   if (hasDiacritics && tAcc) {
     for (const term of accented) {
       if (!term) continue;
-      // Unicode "boundary-ish": non letter/number separators.
+      // Dùng Unicode word boundary (\p{L}\p{N}) để tránh khớp từ con
+      // VD: tìm "chồng" nhưng không khớp trong "chồng bé"
       const rxSrc = `(^|[^\\p{L}\\p{N}])${escapeRegex(term)}([^\\p{L}\\p{N}]|$)`;
       try {
         const rx = new RegExp(rxSrc, "iu");
@@ -163,15 +161,16 @@ const containsBadWords = (text) => {
     }
   }
 
-  // If user input already has diacritics, do NOT run full folded matching.
-  // This avoids severe false positives (e.g., "các"->"cac", "sáng"->"sang").
-  // We still catch a small set of common shorthand profanity that is usually typed without diacritics.
+  // GIAI ĐOẠN 2: Nếu nhập vào CÓ dấu => KHÔNG chạy folded matching
+  // Lý do: Tránh báo động sai lệch (VD: "các" bình thường không phải từ nhạy cảm)
+  // Chỉ kiểm tra tắt tay "dm/dcm" (slang ruy tiêu)
   if (hasDiacritics && tFolded) {
     if (/(^|\W)(dm+|dcm+)(\W|$)/i.test(tFolded)) return true;
     return false;
   }
 
-  // Folded matching (safe set): catches unaccented profanity when the whole message is unaccented.
+  // GIAI ĐOẠN 3: Nếu nhập vào KHÔNG có dấu (đã biến, viết tắt)
+  // => Chạy folded matching với tập từ "safe" (loại bỏ những từ thông dụng)
   if (tFolded) {
     for (const term of foldedSafe) {
       if (!term) continue;

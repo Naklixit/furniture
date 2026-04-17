@@ -3,7 +3,7 @@ const { requireAuth } = require("../middleware/auth");
 const {
   geoAutocomplete,
   geoReverse,
-} = require("../controllers/order.controller");
+} = require("../controllers/geo.controller");
 
 const router = express.Router();
 

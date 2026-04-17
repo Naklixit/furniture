@@ -154,7 +154,7 @@ const HomeFeaturedProductsSection = ({ toast }) => {
         ) : null}
 
         {loading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 auto-rows-fr">
             {Array.from({ length: HOME_PRODUCTS_LIMIT }).map((_, i) => (
               <div key={i} className="rounded-2xl border border-gray-200 bg-white p-4">
                 <div className="aspect-[4/3] rounded-xl bg-gray-100 animate-pulse" />
@@ -165,7 +165,7 @@ const HomeFeaturedProductsSection = ({ toast }) => {
           </div>
         ) : (
           <div key={animKey} className={loading ? "" : "anim-fade-up"}>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 auto-rows-fr">
               {filtered.map((p) => (
                 <ProductCard
                   key={p.id}

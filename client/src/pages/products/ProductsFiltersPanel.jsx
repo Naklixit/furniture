@@ -295,7 +295,7 @@ export default function ProductsFiltersPanel({
               })
             )}
           </div>
-          <div className="mt-2 text-[11px] text-gray-500">Danh sách thương hiệu được giữ ổn định để bạn chọn nhanh.</div>
+  
         </div>
       </div>
 

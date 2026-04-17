@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { BadgeCheck, Truck, RotateCcw, ShoppingCart, Star } from "lucide-react";
 import Header from "../components/Header";
@@ -77,6 +77,7 @@ export default function ProductDetailPage() {
   const [qty, setQty] = useState(1);
   const [tab, setTab] = useState("desc");
   const [tabPanelKey, setTabPanelKey] = useState(0);
+  const reviewsAnchorRef = useRef(null);
 
   const [reviewsLoading, setReviewsLoading] = useState(false);
   const [reviewsError, setReviewsError] = useState("");
@@ -86,6 +87,15 @@ export default function ProductDetailPage() {
   const [similarProducts, setSimilarProducts] = useState([]);
   const [similarLoading, setSimilarLoading] = useState(false);
 
+  const scrollToReviewsSection = () => {
+    window.requestAnimationFrame(() => {
+      const el = reviewsAnchorRef.current;
+      if (el && typeof el.scrollIntoView === "function") {
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    });
+  };
+
   const setTabAndUrl = (nextTab) => {
     const t = nextTab === "reviews" ? "reviews" : "desc";
     setTab(t);
@@ -93,6 +103,9 @@ export default function ProductDetailPage() {
     if (t === "reviews") sp.set("tab", "reviews");
     else sp.delete("tab");
     setSearchParams(sp, { replace: true, preventScrollReset: true });
+    if (t === "reviews") {
+      setTimeout(scrollToReviewsSection, 0);
+    }
   };
 
   useEffect(() => {
@@ -149,6 +162,15 @@ export default function ProductDetailPage() {
   useEffect(() => {
     setTabPanelKey((k) => k + 1);
   }, [tab]);
+
+  // Vào trực tiếp URL có ?tab=reviews — cuộn xuống khối đánh giá sau khi có DOM
+  useEffect(() => {
+    if (loading || !product) return;
+    if (tab !== "reviews") return;
+    const id = window.setTimeout(scrollToReviewsSection, 80);
+    return () => window.clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, product?.id, tab]);
 
   // Fetch similar products
   useEffect(() => {
@@ -552,7 +574,11 @@ export default function ProductDetailPage() {
               </div>
             </div>
 
-            <div className="mt-10 rounded-2xl border border-gray-200 bg-white overflow-hidden">
+            <div
+              ref={reviewsAnchorRef}
+              id="product-reviews"
+              className="mt-10 rounded-2xl border border-gray-200 bg-white overflow-hidden scroll-mt-24"
+            >
               <div className="px-6 pt-4 flex items-center gap-6 border-b border-gray-100">
                 <button
                   type="button"

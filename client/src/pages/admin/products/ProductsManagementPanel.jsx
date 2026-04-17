@@ -11,6 +11,7 @@ import {
 } from "../../../services/product.api";
 import { useAdminProducts } from "./useAdminProducts";
 import { getPageNumbers } from "../shared/pagination";
+import { ADMIN_PER_PAGE_OPTIONS, adminPerPageLabel } from "../shared/adminPagination";
 import { useResultsAnimKey } from "../shared/useResultsAnimKey";
 
 const formatMoneyVND = (n) => {
@@ -114,12 +115,14 @@ const ProductsManagementPanel = ({ toast }) => {
     items,
     page,
     limit,
+    total,
     totalPages,
     searchInput,
     setSearchInput,
     categoryId,
     setCategoryId,
     setPage,
+    setLimit,
     refresh,
     patchItem,
     reset,
@@ -631,40 +634,61 @@ const ProductsManagementPanel = ({ toast }) => {
           </div>
         </div>
 
-        <div className="px-6 py-4 flex items-center justify-end gap-2 bg-white">
-          <button
-            type="button"
-            className="w-9 h-9 rounded-md border border-gray-200 text-gray-600 hover:bg-gray-50"
-            aria-label="Trang trước"
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-            disabled={page <= 1}
-          >
-            ‹
-          </button>
-          {pageNumbers.map((p) => (
-            <button
-              key={p}
-              type="button"
-              className={
-                "w-9 h-9 rounded-md border " +
-                (p === page
-                  ? "border-blue-500 text-blue-700 font-semibold hover:bg-blue-50"
-                  : "border-gray-200 text-gray-600 hover:bg-gray-50")
-              }
-              onClick={() => setPage(p)}
+        <div className="px-6 py-4 flex flex-wrap items-center justify-between gap-3 bg-white">
+          <div className="text-sm text-gray-500">Tổng {Number(total || 0)} sản phẩm</div>
+
+          <div className="flex items-center gap-2">
+            <select
+              className="h-9 rounded-md border border-gray-200 text-sm text-gray-700 px-2 bg-white"
+              value={limit}
+              onChange={(e) => {
+                const next = Number(e.target.value) || 10;
+                setLimit(next);
+                setPage(1);
+              }}
+              aria-label="Số lượng mỗi trang"
             >
-              {p}
+              {ADMIN_PER_PAGE_OPTIONS.map((n) => (
+                <option key={n} value={n}>
+                  {adminPerPageLabel(n)}
+                </option>
+              ))}
+            </select>
+
+            <button
+              type="button"
+              className="w-9 h-9 rounded-md border border-gray-200 text-gray-600 hover:bg-gray-50"
+              aria-label="Trang trước"
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page <= 1}
+            >
+              ‹
             </button>
-          ))}
-          <button
-            type="button"
-            className="w-9 h-9 rounded-md border border-gray-200 text-gray-600 hover:bg-gray-50"
-            aria-label="Trang sau"
-            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            disabled={page >= totalPages}
-          >
-            ›
-          </button>
+            {pageNumbers.map((p) => (
+              <button
+                key={p}
+                type="button"
+                className={
+                  "w-9 h-9 rounded-md border " +
+                  (p === page
+                    ? "border-blue-500 text-blue-700 font-semibold hover:bg-blue-50"
+                    : "border-gray-200 text-gray-600 hover:bg-gray-50")
+                }
+                onClick={() => setPage(p)}
+              >
+                {p}
+              </button>
+            ))}
+            <button
+              type="button"
+              className="w-9 h-9 rounded-md border border-gray-200 text-gray-600 hover:bg-gray-50"
+              aria-label="Trang sau"
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page >= totalPages}
+            >
+              ›
+            </button>
+          </div>
         </div>
       </div>
 

@@ -1,4 +1,3 @@
-// controllers/auth.controller.js
 const bcrypt = require("bcrypt");
 const User = require("../models/User.model");
 const {
@@ -32,8 +31,6 @@ const pickUser = (user) => {
 
 const unauthorized = (res) =>
   res.status(401).json({ message: "Không có quyền truy cập" });
-
-/// Đăng ký
 
 const register = async (req, res, next) => {
   try {
@@ -83,7 +80,7 @@ const register = async (req, res, next) => {
     return next(err);
   }
 };
-// Đăng nhập
+
 const login = async (req, res, next) => {
   try {
     const { email, password } = req.body || {};
@@ -104,7 +101,6 @@ const login = async (req, res, next) => {
         .json({ message: "Email hoặc mật khẩu không đúng" });
     }
 
-    // Tài khoản không có mật khẩu (ví dụ đăng nhập Google) không thể đăng nhập bằng mật khẩu
     if (!user.password) {
       return res
         .status(400)

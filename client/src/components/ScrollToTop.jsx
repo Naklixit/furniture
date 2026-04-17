@@ -34,6 +34,7 @@ const ScrollToTop = () => {
   const location = useLocation();
   const navType = useNavigationType();
   const didInitRef = useRef(false);
+  const prevPathnameRef = useRef(null);
 
   const pageKey = useMemo(() => {
     return `${location.pathname}${location.search || ""}`;
@@ -61,14 +62,14 @@ const ScrollToTop = () => {
   }, [pageKey]);
 
   useEffect(() => {
-    try {
-      const el = document?.activeElement;
-      if (el && typeof el.blur === "function") el.blur();
-    } catch {
-      // ignore
-    }
+    const pathname = location.pathname || "";
 
-    // Avoid restoring on initial load; always start at top
+    // Chỉ đổi query (?q=, ?tab=...) — giữ scroll & focus (không blur input tìm kiếm).
+    const prevPath = prevPathnameRef.current;
+    const pathnameChanged = prevPath !== null && prevPath !== pathname;
+    prevPathnameRef.current = pathname;
+
+    // Lần đầu vào app: luôn về đầu trang
     if (!didInitRef.current) {
       didInitRef.current = true;
       const rafInit = window.requestAnimationFrame(() => {
@@ -81,12 +82,15 @@ const ScrollToTop = () => {
       return () => window.cancelAnimationFrame(rafInit);
     }
 
+    if (!pathnameChanged) {
+      return undefined;
+    }
+
     const positions = loadPositions();
     const restoreY = Number.isFinite(Number(positions?.[pageKey]))
       ? Number(positions[pageKey])
       : null;
 
-    // Run on next frame to avoid layout thrash
     const raf = window.requestAnimationFrame(() => {
       const shouldRestore = navType === "POP" && restoreY !== null;
       try {
@@ -97,7 +101,7 @@ const ScrollToTop = () => {
     });
 
     return () => window.cancelAnimationFrame(raf);
-  }, [pageKey, navType]);
+  }, [location.pathname, pageKey, navType]);
 
   return null;
 };

@@ -24,8 +24,6 @@ const parsePositiveInt = (value, fallback) => {
 const ensureUniqueSlug = async ({ baseSlug, currentId }) => {
   let slug = baseSlug;
   let i = 0;
-
-  // eslint-disable-next-line no-constant-condition
   while (true) {
     const exists = await Category.findOne({
       slug,

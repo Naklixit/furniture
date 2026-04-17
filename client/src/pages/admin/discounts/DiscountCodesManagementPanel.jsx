@@ -8,6 +8,7 @@ import {
 } from "../../../services/discountCode.api";
 import { useAdminDiscountCodes } from "./useAdminDiscountCodes";
 import { getPageNumbers } from "../shared/pagination";
+import { ADMIN_PER_PAGE_OPTIONS, adminPerPageLabel } from "../shared/adminPagination";
 import { useResultsAnimKey } from "../shared/useResultsAnimKey";
 
 const formatNumber = (n) => {
@@ -397,11 +398,11 @@ const DiscountCodesManagementPanel = ({ toast }) => {
                 setLimit(v);
                 setPage(1);
               }}
-              aria-label="Số dòng mỗi trang"
+              aria-label="Số lượng mỗi trang"
             >
-              {[5, 10, 20, 50].map((n) => (
+              {ADMIN_PER_PAGE_OPTIONS.map((n) => (
                 <option key={n} value={n}>
-                  {n} / page
+                  {adminPerPageLabel(n)}
                 </option>
               ))}
             </select>

@@ -68,6 +68,7 @@ const ProductCard = ({ product, showAddToCart = true, onAddToCart, className = "
 
   const ratingAvg = useMemo(() => clamp(Number(product?.ratingAvg || 0), 0, 5), [product]);
   const ratingCount = useMemo(() => Math.max(0, Number(product?.ratingCount || 0)), [product]);
+  const qtySold = useMemo(() => Math.max(0, Number(product?.qtySold || 0)), [product?.qtySold]);
 
   const stockInfo = useMemo(() => {
     const rawStock = Number(product?.stock);
@@ -114,7 +115,7 @@ const ProductCard = ({ product, showAddToCart = true, onAddToCart, className = "
   return (
     <div
       className={
-        "group rounded-2xl border border-gray-200 bg-white shadow-sm hover:shadow-md transition-all overflow-hidden flex flex-col h-full hover:-translate-y-0.5 " +
+        "group rounded-2xl border border-gray-200 bg-white shadow-sm hover:shadow-md transition-all overflow-hidden flex flex-col h-full " +
         className
       }
       onMouseEnter={() => setHovered(true)}
@@ -194,25 +195,33 @@ const ProductCard = ({ product, showAddToCart = true, onAddToCart, className = "
       </div>
 
       <div className="p-4 flex flex-col flex-1">
-        <div className="flex items-center gap-2 text-xs text-gray-500 min-h-[18px]">
-          <StarsRow value={ratingAvg} />
-          <span>({ratingCount})</span>
-        </div>
-
         <button
           type="button"
           onClick={() => navigate(`/products/${encodeURIComponent(product?.slug || "")}`)}
-          className="mt-2 text-left text-sm font-semibold text-gray-900 hover:text-teal-700 line-clamp-2 min-h-[40px]"
+          className="text-left text-sm font-semibold text-gray-900 hover:text-teal-700 line-clamp-2 min-h-[40px]"
           title={product?.name || ""}
         >
           {product?.name || ""}
         </button>
 
-        <div className="mt-auto pt-3 flex items-end gap-2">
-          <div className="text-base font-bold text-teal-700">{formatMoneyVND(final)}</div>
+        <div className="mt-3 flex items-end gap-2">
           {hasSale ? (
-            <div className="text-xs text-gray-400 line-through pb-0.5">{formatMoneyVND(original)}</div>
-          ) : null}
+            <>
+              <div className="text-base font-bold text-teal-700">{formatMoneyVND(final)}</div>
+              <div className="text-xs text-gray-400 line-through pb-0.5">{formatMoneyVND(original)}</div>
+            </>
+          ) : (
+            <div className="text-base font-bold text-teal-700">{formatMoneyVND(original)}</div>
+          )}
+        </div>
+
+        <div className="mt-auto pt-3 flex items-center justify-between text-xs text-gray-500 min-h-[18px]">
+          <div className="flex items-center gap-2">
+            <StarsRow value={ratingAvg} />
+            <span>({ratingCount})</span>
+          </div>
+
+          <div className="whitespace-nowrap">Đã bán {qtySold.toLocaleString("vi-VN")}</div>
         </div>
       </div>
     </div>

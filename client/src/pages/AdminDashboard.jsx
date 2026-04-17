@@ -19,12 +19,26 @@ import DiscountCodesManagementPanel from "./admin/discounts/DiscountCodesManagem
 import OrdersManagementPanel from "./admin/orders/OrdersManagementPanel";
 import StatsPanel from "./admin/stats/StatsPanel";
 
+const ADMIN_ACTIVE_PANEL_KEY = "admin:activePanel:v1";
+
+const readStoredPanelKey = () => {
+  try {
+    const raw = sessionStorage.getItem(ADMIN_ACTIVE_PANEL_KEY);
+    const s = String(raw || "").trim();
+    if (!s) return null;
+    const allowed = new Set(["stats", "categories", "products", "discounts", "users", "orders"]);
+    return allowed.has(s) ? s : null;
+  } catch {
+    return null;
+  }
+};
+
 const AdminDashboard = () => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const toast = useToast();
 
-  const [activeKey, setActiveKey] = useState("stats");
+  const [activeKey, setActiveKey] = useState(() => readStoredPanelKey() || "stats");
 
   const displayName = useMemo(
     () => user?.fullName || user?.email || "Quản trị viên",
@@ -68,6 +82,11 @@ const AdminDashboard = () => {
       activeKey={activeKey}
       onSelectKey={(key) => {
         setActiveKey(key);
+        try {
+          sessionStorage.setItem(ADMIN_ACTIVE_PANEL_KEY, key);
+        } catch {
+          // ignore
+        }
       }}
       displayName={displayName}
       email={user?.email || ""}
