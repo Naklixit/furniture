@@ -5,6 +5,7 @@ import Footer from "../components/Footer";
 import HomeCategoriesSection from "../components/HomeCategoriesSection";
 import HomeFeaturedProductsSection from "../components/HomeFeaturedProductsSection";
 import HomeTestimonialsSection from "../components/HomeTestimonialsSection";
+import HomeNewsletterSection from "../components/HomeNewsletterSection";
 
 const HomePage = () => {
   const [pageAnimKey, setPageAnimKey] = useState(0);
@@ -26,6 +27,7 @@ const HomePage = () => {
           <HomeCategoriesSection />
           <HomeFeaturedProductsSection />
           <HomeTestimonialsSection />
+          <HomeNewsletterSection />
         </div>
       </main>
 

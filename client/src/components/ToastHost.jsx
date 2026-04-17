@@ -1,6 +1,6 @@
 import { X } from "lucide-react";
 import { useToast } from "../context/useToast";
-
+//Chỉnh màu theo status
 const palette = {
   success: {
     ring: "ring-green-200",

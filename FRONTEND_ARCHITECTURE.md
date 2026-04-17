@@ -44,6 +44,7 @@
 ```
 
 **Stack công nghệ:**
+
 - **Framework**: React 19 (functional components, hooks)
 - **Build tool**: Vite 7 (faster dev, modern bundling)
 - **Styling**: Tailwind CSS 4 + custom utilities
@@ -57,6 +58,7 @@
 ## 2. Phân Tầng (Layering)
 
 ### 2.1 **Pages** (`src/pages/`)
+
 Tương ứng 1-1 với routes, chứa business logic trang.
 
 ```
@@ -77,11 +79,13 @@ Pages/
 ```
 
 **Đặc điểm:**
+
 - Mỗi page là 1 `Router` component duy nhất
 - Chứa logic fetch data, state management
 - Gọi các components con để render UI
 
 ### 2.2 **Components** (`src/components/`)
+
 Reusable UI components, không liên quan routes.
 
 ```
@@ -98,11 +102,13 @@ Components/
 ```
 
 **Đặc điểm:**
+
 - Pure presentation logic
 - Nhận dữ liệu qua `props`
 - Emit events qua callback (e.g., `onAddToCart`)
 
 ### 2.3 **Stores** (`src/stores/`)
+
 Zustand centralized state.
 
 ```
@@ -112,6 +118,7 @@ stores/
 ```
 
 **Tại sao Zustand thay vì Redux?**
+
 ```
 Zustand hơn Redux ở điểm:
 ✅ Code ít hơn (không cần reducer + actions + dispatch)
@@ -125,6 +132,7 @@ Nhược điểm:
 ```
 
 ### 2.4 **Services** (`src/services/`)
+
 API calls (Axios).
 
 ```
@@ -138,11 +146,12 @@ services/
 ```
 
 **Cấu trúc API call:**
+
 ```javascript
 // Ví dụ: product.api.js
 export const listProductsApi = async ({ page = 1, limit = 10, ...filters }) => {
   const res = await axios.get("/api/products", {
-    params: { page, limit, ...filters }
+    params: { page, limit, ...filters },
   });
   return res?.data?.items || [];
 };
@@ -261,6 +270,7 @@ export const useAuthStore = create(
 ```
 
 **Tại sao `bootstrapped`?**
+
 ```
 Page load: localStorage có { user: {...} } nhưng accessToken hết hạn
 → Cần gọi /me để lấy token mới (hay logout)
@@ -296,6 +306,7 @@ export const useCartStore = create(
 ```
 
 **Persistent Logic:**
+
 ```
 Zustand + persist middleware → localStorage tự động
 → Khi user reload page → items vẫn còn
@@ -309,6 +320,7 @@ Zustand + persist middleware → localStorage tự động
 ### 5.1 ProductCard - Layout Optimization
 
 **Vấn đề cũ:**
+
 ```
 Khi hover 1 card, card đó bị translate lên (-translate-y-0.5)
 → Nếu card cùng hàng có độ cao khác nhau
@@ -316,6 +328,7 @@ Khi hover 1 card, card đó bị translate lên (-translate-y-0.5)
 ```
 
 **Giải pháp:**
+
 ```jsx
 // Bỏ hover translate
 className="group ... flex flex-col h-full"  // h-full = chiều cao đồng nhất
@@ -326,6 +339,7 @@ className="group ... flex flex-col h-full"  // h-full = chiều cao đồng nh�
 ```
 
 **Tại sao `auto-rows-fr`?**
+
 ```
 auto-rows-fr = tất cả rows có height = 1 fraction (chiếm phần bằng nhau)
 → Nếu grid có 4 cols, 8 items → 2 rows, mỗi row height tính từ item cao nhất
@@ -336,6 +350,7 @@ auto-rows-fr = tất cả rows có height = 1 fraction (chiếm phần bằng nh
 ### 5.2 ProductCard - Display Fields
 
 **Layout theo thứ tự:**
+
 ```
 1. Tên sản phẩm (line-clamp-2)
 2. Giá giảm (nếu có sale) + Giá gốc gạch (line-through)
@@ -350,6 +365,7 @@ Lý do:
 ### 5.3 AI Product Advisor - Component Architecture
 
 **File structure:**
+
 ```
 src/
 ├── components/
@@ -361,6 +377,7 @@ src/
 ```
 
 **Flow:**
+
 ```
 User nhập "ghế gỗ dưới 2 triệu"
   │
@@ -383,6 +400,7 @@ AiAssistantWidget render reply + product cards
 ## 6. Performance Optimizations
 
 ### 6.1 Code Splitting
+
 ```javascript
 // App.jsx
 const HomePage = lazy(() => import('./pages/HomePage'));
@@ -393,28 +411,31 @@ const ProductsPage = lazy(() => import('./pages/ProductsPage'));
 ```
 
 ### 6.2 Component Memoization
+
 ```javascript
 // ProductCard.jsx
 const ProductCard = memo(({ product, showAddToCart, onAddToCart }) => {
   const ratingAvg = useMemo(() => clamp(Number(product?.ratingAvg || 0), 0, 5), [product]);
   // useMemo → không re-calculate nếu product không đổi
-  
+
   return (...)
 });
 ```
 
 ### 6.3 Image Optimization
+
 ```javascript
 // ProductCard.jsx
 <img
   src={imageUrl}
   alt={product?.name}
-  loading="lazy"  // Lazy load image (defer until visible)
+  loading="lazy" // Lazy load image (defer until visible)
   className="w-full h-full object-cover"
 />
 ```
 
 ### 6.4 API Request Debouncing
+
 ```javascript
 // Header.jsx - autocomplete tìm kiếm
 const debounce = (fn, delay) => {
@@ -427,7 +448,7 @@ const debounce = (fn, delay) => {
 
 const debouncedSearch = debounce((q) => {
   listProductsApi({ search: q }).then(setSuggestions);
-}, 300);  // Chỉ gọi API sau 300ms không gõ
+}, 300); // Chỉ gọi API sau 300ms không gõ
 ```
 
 ---
@@ -435,6 +456,7 @@ const debouncedSearch = debounce((q) => {
 ## 7. Error Handling & Validation
 
 ### 7.1 Form Validation
+
 ```javascript
 // CheckoutPage.jsx
 const validateCheckout = () => {
@@ -451,18 +473,19 @@ if (validateCheckout()) {
 ```
 
 ### 7.2 API Error Handling
+
 ```javascript
-// services/api 
+// services/api
 axios.interceptors.response.use(
   (res) => res,
   (err) => {
     if (err.response?.status === 401) {
       // Unauthorized → logout
       useAuthStore.getState().clearAuth();
-      window.location.href = '/login';
+      window.location.href = "/login";
     }
     throw err;
-  }
+  },
 );
 ```
 
@@ -495,6 +518,7 @@ App.jsx (Routes)
 ```
 
 **PrivateRoute Pattern:**
+
 ```javascript
 // Middleware kiểm tra auth
 const PrivateRoute = ({ element }) => {
@@ -503,29 +527,30 @@ const PrivateRoute = ({ element }) => {
 };
 
 // Dùng
-<Route element={<PrivateRoute element={<CartPage />} />} path="/cart" />
+<Route element={<PrivateRoute element={<CartPage />} />} path="/cart" />;
 ```
 
 ---
 
 ## 9. Package Dependencies - Lý Do Chọn
 
-| Package | Dùng Cho | Tại Sao |
-|---------|----------|--------|
-| `react@19` | UI library | Stable, lớn cộng động, hooks mature |
-| `vite@7` | Build tool | Fast dev server, modern bundling |
-| `tailwindcss@4` | Styling | Utility-first, nhanh, mobile-first |
-| `zustand@5` | State mgmt | Lightweight, localStorage persist |
-| `axios@1.13` | HTTP client | Interceptor, request/response transform |
-| `react-router-dom@7` | Routing | Nested routes, loader/action |
-| `lucide-react` | Icons | Modern SVG icons, tree-shakeable |
-| `antd@6` | UI components | Rich admin components (table, modal) |
+| Package              | Dùng Cho      | Tại Sao                                 |
+| -------------------- | ------------- | --------------------------------------- |
+| `react@19`           | UI library    | Stable, lớn cộng động, hooks mature     |
+| `vite@7`             | Build tool    | Fast dev server, modern bundling        |
+| `tailwindcss@4`      | Styling       | Utility-first, nhanh, mobile-first      |
+| `zustand@5`          | State mgmt    | Lightweight, localStorage persist       |
+| `axios@1.13`         | HTTP client   | Interceptor, request/response transform |
+| `react-router-dom@7` | Routing       | Nested routes, loader/action            |
+| `lucide-react`       | Icons         | Modern SVG icons, tree-shakeable        |
+| `antd@6`             | UI components | Rich admin components (table, modal)    |
 
 ---
 
 ## 10. Security Considerations
 
 ### 10.1 XSS Prevention
+
 ```javascript
 // ✅ Đúng - React tự escape HTML
 <div>{userInput}</div>
@@ -535,17 +560,19 @@ const PrivateRoute = ({ element }) => {
 ```
 
 ### 10.2 CSRF Protection
+
 ```javascript
 // Axios gửi token từ localStorage
 // Backend kiểm tra CORS origin + cookie httpOnly
-axios.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
+axios.defaults.headers.common["Authorization"] = `Bearer ${accessToken}`;
 ```
 
 ### 10.3 Password Security
+
 ```javascript
 // Frontend chỉ hash password trong register/forgot
 // Backend: bcrypt hash lại, KHÔNG lưu plain password
-import bcrypt from 'bcrypt';
+import bcrypt from "bcrypt";
 const hashed = await bcrypt.hash(password, 10);
 ```
 
@@ -557,23 +584,23 @@ Mặc dù project không có unit tests, đây là strategies nên biết:
 
 ```javascript
 // 1. Component Testing (React Testing Library)
-test('ProductCard should display name', () => {
+test("ProductCard should display name", () => {
   render(<ProductCard product={mockProduct} />);
   expect(screen.getByText(mockProduct.name)).toBeInTheDocument();
 });
 
 // 2. Store Testing (Zustand)
-test('addItem should increase qty if same product', () => {
+test("addItem should increase qty if same product", () => {
   const store = useCartStore.getState();
-  store.addItem({ productId: '1', qty: 1 });
-  store.addItem({ productId: '1', qty: 2 });
+  store.addItem({ productId: "1", qty: 1 });
+  store.addItem({ productId: "1", qty: 2 });
   expect(store.items[0].qty).toBe(3);
 });
 
 // 3. API Testing (Mock API)
-test('listProducts should handle network error', async () => {
-  jest.spyOn(axios, 'get').mockRejectedValueOnce(new Error('Network'));
-  await expect(listProductsApi()).rejects.toThrow('Network');
+test("listProducts should handle network error", async () => {
+  jest.spyOn(axios, "get").mockRejectedValueOnce(new Error("Network"));
+  await expect(listProductsApi()).rejects.toThrow("Network");
 });
 ```
 
@@ -582,12 +609,14 @@ test('listProducts should handle network error', async () => {
 ## 12. Build & Deployment
 
 ### 12.1 Development
+
 ```bash
 npm run dev  # Vite dev server port 5173+
 # HMR enabled → change file → auto-reload browser
 ```
 
 ### 12.2 Production Build
+
 ```bash
 npm run build  # Output: dist/
 # - Bundle JS (tree-shake, minify)
@@ -599,6 +628,7 @@ npm run preview  # Test build locally
 ```
 
 ### 12.3 Deployment (típico)
+
 ```bash
 # 1. Build locally
 npm run build
@@ -615,19 +645,20 @@ npm run build
 
 ## 13. Common Issues & Solutions
 
-| Issue | Nguyên Nhân | Giải Pháp |
-|-------|-----------|----------|
-| Cart items mất sau reload | localStorage bị xóa | Clear localStorage settings, check persist config |
-| API call timeout | Network chậm | Thêm timeout interceptor, retry logic |
-| Ảnh không load | Image URL sai | Kiểm tra Cloudinary config, đảm bảo URL public |
-| Component re-render liên tục | Missing dependency array | Thêm dependency vào useEffect |
-| Token hết hạn giữa request | Token sinh từ JWT | Gọi /me refresh mới, retry API |
+| Issue                        | Nguyên Nhân              | Giải Pháp                                         |
+| ---------------------------- | ------------------------ | ------------------------------------------------- |
+| Cart items mất sau reload    | localStorage bị xóa      | Clear localStorage settings, check persist config |
+| API call timeout             | Network chậm             | Thêm timeout interceptor, retry logic             |
+| Ảnh không load               | Image URL sai            | Kiểm tra Cloudinary config, đảm bảo URL public    |
+| Component re-render liên tục | Missing dependency array | Thêm dependency vào useEffect                     |
+| Token hết hạn giữa request   | Token sinh từ JWT        | Gọi /me refresh mới, retry API                    |
 
 ---
 
 ## Tóm Tắt
 
 **FE Architecture của project:**
+
 1. **Vite** + **React 19** → fast development
 2. **Zustand** → simple state (auth, cart)
 3. **Tailwind CSS** → responsive UI

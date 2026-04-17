@@ -121,12 +121,12 @@ const ProductCard = ({ product, showAddToCart = true, onAddToCart, className = "
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      <div className="relative aspect-[4/3] bg-gray-50">
+      <div className="relative aspect-[4/3] bg-gray-100 overflow-hidden">
         {imageUrl ? (
           <img
             src={imageUrl}
             alt={product?.name || ""}
-            className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-[1.03]"
+            className="w-full h-full object-cover object-center transition-transform duration-200 group-hover:scale-[1.03]"
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-gray-400 text-sm">No image</div>

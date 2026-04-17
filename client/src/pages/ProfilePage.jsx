@@ -166,7 +166,6 @@ export default function ProfilePage() {
     return () => {
       mounted = false;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, ordersMeta.page, ordersMeta.limit, ordersStatus, ordersReloadKey]);
 
   if (didLogout) return <Navigate to="/" replace />;

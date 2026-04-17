@@ -3,7 +3,7 @@ import {
   BadgeDollarSign,
   ShoppingCart,
   UserPlus,
-  Package,
+  Sofa,
   Star,
   Calculator,
   TrendingUp,
@@ -559,7 +559,7 @@ const StatsPanel = ({ toast }) => {
         <Card
           title="Sản phẩm đã bán"
           value={loading ? 0 : kpis?.productsSold?.value}
-          Icon={Package}
+          Icon={Sofa}
           colorClass="bg-amber-50 text-amber-700"
           changePct={loading ? 0 : kpis?.productsSold?.changePct}
         />

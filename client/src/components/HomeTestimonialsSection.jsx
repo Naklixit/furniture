@@ -1,9 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Slider from "react-slick";
-import { Star, Quote } from "lucide-react";
+import { ChevronLeft, ChevronRight, Quote, Star } from "lucide-react";
 import { getLatestReviewsApi } from "../services/review.api";
 import "slick-carousel/slick/slick.css";
-import "slick-carousel/slick/slick-theme.css";
 
 const StarsRow = ({ value, size = 16 }) => {
   const v = Math.max(0, Math.min(5, Number(value || 0)));
@@ -119,6 +118,7 @@ const ReviewCard = ({ r, globalIdx }) => {
 export default function HomeTestimonialsSection() {
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
+  const sliderRef = useRef(null);
 
   useEffect(() => {
     let mounted = true;
@@ -144,19 +144,46 @@ export default function HomeTestimonialsSection() {
   const sliderSettings = useMemo(() => {
     return {
       dots: true,
-      infinite: reviews.length > 3,
+      infinite: true,
       speed: 480,
-      slidesToShow: Math.min(3, Math.max(1, reviews.length)),
+      slidesToShow: 3,
       slidesToScroll: 1,
-      autoplay: reviews.length > 1,
+      autoplay: reviews.length > 3,
       autoplaySpeed: 5200,
       pauseOnHover: true,
-      arrows: true,
+      arrows: false,
+      dotsClass: "testimonial-dots",
+      customPaging: () => (
+        <span className="dot block h-2 w-2 rounded-full bg-gray-300 transition-all duration-200" />
+      ),
+      appendDots: (dots) => (
+        <div className="mt-6 flex items-center justify-center gap-3">
+          <button
+            type="button"
+            onClick={() => sliderRef.current?.slickPrev?.()}
+            aria-label="Xem đánh giá trước"
+            className="w-9 h-9 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-500 hover:text-teal-600 hover:border-teal-200 transition"
+          >
+            <ChevronLeft size={18} />
+          </button>
+
+          {dots}
+
+          <button
+            type="button"
+            onClick={() => sliderRef.current?.slickNext?.()}
+            aria-label="Xem đánh giá tiếp theo"
+            className="w-9 h-9 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-500 hover:text-teal-600 hover:border-teal-200 transition"
+          >
+            <ChevronRight size={18} />
+          </button>
+        </div>
+      ),
       responsive: [
         {
           breakpoint: 1024,
           settings: {
-            slidesToShow: Math.min(2, Math.max(1, reviews.length)),
+            slidesToShow: 2,
             slidesToScroll: 1,
           },
         },
@@ -169,7 +196,7 @@ export default function HomeTestimonialsSection() {
         },
       ],
     };
-  }, [reviews.length]);
+  }, [reviews.length]);     
 
   if (loading) {
     return (
@@ -204,8 +231,8 @@ export default function HomeTestimonialsSection() {
       </div>
 
       <div className="mt-10 max-w-7xl mx-auto px-4 md:px-6">
-        <div className="testimonials-slick [&_.slick-dots]:bottom-[-2.25rem] [&_.slick-dots_li.slick-active_button:before]:text-teal-600 [&_.slick-arrow]:z-10 [&_.slick-prev]:left-0 [&_.slick-next]:right-0">
-          <Slider {...sliderSettings}>
+        <div className="testimonials-slick [&_.testimonial-dots]:static [&_.testimonial-dots]:m-0 [&_.testimonial-dots]:p-0 [&_.testimonial-dots]:list-none [&_.testimonial-dots]:flex [&_.testimonial-dots]:items-center [&_.testimonial-dots]:justify-center [&_.testimonial-dots]:gap-2 [&_.testimonial-dots_li]:m-0 [&_.testimonial-dots_li]:list-none [&_.testimonial-dots_li_button]:p-0 [&_.testimonial-dots_li_button]:text-[0px] [&_.testimonial-dots_li_button]:leading-none [&_.testimonial-dots_li_button:before]:hidden [&_.testimonial-dots_li.slick-active_.dot]:w-8 [&_.testimonial-dots_li.slick-active_.dot]:bg-teal-500">
+          <Slider ref={sliderRef} {...sliderSettings}>
             {reviews.map((r, idx) => (
               <div key={r.id}>
                 <ReviewCard r={r} globalIdx={idx} />

@@ -12,8 +12,9 @@ const TABS = [
   { key: "newest", label: "Mới nhất" },
   { key: "discount", label: "Giảm giá" },
 ];
-
+//Số lượng PRODUCT hiển thị là 12
 const HOME_PRODUCTS_LIMIT = 12;
+//Số rating tối thiểu để hiển thị trong tab Featured (được yêu thích nhất) là 4 sao
 const FEATURED_MIN_RATING = 4;
 
 const getDiscountRatio = (p) => {

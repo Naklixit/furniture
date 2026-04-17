@@ -52,6 +52,7 @@ const LoginPage = () => {
       }
 
       login({ user, accessToken });
+      //truyền message vào toast với .status là success để hiện màu xanh, còn error sẽ hiện màu đỏ
       toast.success("Đăng nhập thành công");
 
       if (user.role === "admin") {

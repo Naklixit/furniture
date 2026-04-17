@@ -244,7 +244,7 @@ export default function CheckoutPage() {
 
     try {
       setSubmitting(true);
-
+// chuẩn bị payload cho API để gửi đặt hàng tùy theo phương thức thanh toán
       const payload = {
         fullName: f,
         phoneNumber: p,
@@ -263,6 +263,7 @@ export default function CheckoutPage() {
       }
 
       if (payMethod === "VNPAY") {
+        //Gọi API tạo đơn thanh toán VNPay, nếu thành công sẽ nhận được URL thanh toán để chuyển hướng người dùng
         const res = await createVnpayPaymentApi(payload);
         const url = res?.paymentUrl;
         if (!url) throw new Error("Không tạo được link thanh toán VNPay");

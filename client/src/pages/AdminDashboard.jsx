@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   BarChart3,
-  Boxes,
+  Sofa,
   ClipboardList,
   Tag,
   TicketPercent,
@@ -49,7 +49,7 @@ const AdminDashboard = () => {
     () => [
       { key: "stats", label: "Thống kê", Icon: BarChart3 },
       { key: "categories", label: "Quản lý danh mục", Icon: Tag },
-      { key: "products", label: "Quản lý sản phẩm", Icon: Boxes },
+      { key: "products", label: "Quản lý sản phẩm", Icon: Sofa },
       { key: "discounts", label: "Quản lý mã giảm giá", Icon: TicketPercent },
       { key: "users", label: "Quản lý người dùng", Icon: Users },
       { key: "orders", label: "Quản lý đơn hàng", Icon: ClipboardList },
@@ -69,7 +69,6 @@ const AdminDashboard = () => {
     try {
       await logoutApi();
     } catch {
-      // ignore
     } finally {
       logout();
       navigate("/login");
@@ -85,7 +84,6 @@ const AdminDashboard = () => {
         try {
           sessionStorage.setItem(ADMIN_ACTIVE_PANEL_KEY, key);
         } catch {
-          // ignore
         }
       }}
       displayName={displayName}
