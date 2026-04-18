@@ -54,7 +54,7 @@ function Card({ children, className = "" }) {
   return (
     <div
       className={
-        "rounded-3xl border border-gray-200/70 bg-white shadow-[0_8px_30px_rgba(15,23,42,0.06)] anim-fade-up " +
+        "rounded-3xl bg-white shadow-xl anim-fade-up " +
         className
       }
     >
@@ -65,8 +65,8 @@ function Card({ children, className = "" }) {
 
 function SectionTitle({ icon: Icon, title, desc }) {
   return (
-    <div className="flex items-start gap-3">
-      <span className="mt-0.5 inline-flex w-9 h-9 rounded-2xl bg-teal-50 border border-teal-100 items-center justify-center shrink-0">
+    <div className="flex items-center gap-3">
+      <span className="inline-flex w-9 h-9 rounded-2xl bg-teal-50 border border-teal-100 items-center justify-center shrink-0">
         <Icon size={18} className="text-teal-700" />
       </span>
       <div className="min-w-0">
@@ -578,7 +578,7 @@ export default function CheckoutPage() {
                   return (
                     <div key={it.productId} className="flex items-start justify-between gap-3">
                       <div className="flex items-start gap-3 min-w-0">
-                        <div className="w-12 h-12 rounded-2xl bg-slate-50 overflow-hidden border border-slate-100 shrink-0">
+                        <div className="w-12 h-12 rounded-2xl bg-slate-50 overflow-hidden shrink-0">
                           {it?.imageUrl ? (
                             <img src={it.imageUrl} alt={it?.name || ""} className="w-full h-full object-cover" />
                           ) : null}
@@ -599,7 +599,7 @@ export default function CheckoutPage() {
                 ) : null}
               </div>
 
-              <div className="mt-4 pt-4 border-t border-slate-100 space-y-2 text-sm">
+              <div className="mt-4 pt-4 space-y-2 text-sm">
                 <div className="flex items-center justify-between text-slate-700">
                   <span className="font-bold">Tạm tính</span>
                   <span className="font-semibold text-slate-900">{formatMoneyVND(subtotal)}</span>
@@ -614,7 +614,7 @@ export default function CheckoutPage() {
                   <span className="font-bold">Phí vận chuyển</span>
                   <span className="font-bold text-teal-700">Miễn phí</span>
                 </div>
-                <div className="pt-2 mt-2 border-t border-slate-100 flex items-center justify-between">
+                <div className="pt-2 mt-2 flex items-center justify-between">
                   <span className="text-sm font-bold text-slate-900">Tổng cộng</span>
                   <span className="text-lg font-black text-teal-700">{formatMoneyVND(finalTotal)}</span>
                 </div>

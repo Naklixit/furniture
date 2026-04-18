@@ -263,7 +263,7 @@ export default function CartPage() {
             <button
               type="button"
               onClick={handleClear}
-              className="h-10 px-4 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-sm font-semibold text-gray-800 transition-transform duration-150 active:scale-[0.99]"
+              className="h-10 px-4 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-sm font-semibold text-gray-800 transition-transform duration-150 active:scale-[0.99] shadow-md"
             >
               Xoá tất cả
             </button>
@@ -271,13 +271,13 @@ export default function CartPage() {
         </div>
 
         {items.length === 0 ? (
-          <div className="mt-8 rounded-2xl border border-gray-200 bg-white p-10 text-center anim-fade-up transition-shadow duration-200 hover:shadow-md">
+          <div className="mt-8 rounded-2xl border border-gray-200 bg-white p-10 text-center anim-fade-up transition-shadow duration-200 shadow-xl">
             <div className="text-sm font-semibold text-gray-900">Giỏ hàng trống</div>
             <div className="mt-1 text-sm text-gray-600">Hãy thêm vài sản phẩm bạn thích.</div>
             <div className="mt-5">
               <Link
                 to="/products"
-                className="inline-flex items-center justify-center h-11 px-5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-sm font-semibold transition-transform duration-150 active:scale-[0.99]"
+                className="inline-flex items-center justify-center h-11 px-5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-sm font-semibold transition-transform duration-150 active:scale-[0.99] shadow-xl"
               >
                 Xem sản phẩm
               </Link>
@@ -286,7 +286,7 @@ export default function CartPage() {
         ) : (
           <div className="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2">
-              <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden anim-fade-up transition-all duration-200 hover:shadow-md">
+              <div className="rounded-2xl bg-white overflow-hidden anim-fade-up transition-shadow duration-200 shadow-xl">
                 <div className="divide-y divide-gray-100">
                   {items.map((it) => {
                     const qty = Math.max(1, Number(it?.qty || 1));
@@ -301,7 +301,7 @@ export default function CartPage() {
                         <button
                           type="button"
                           onClick={() => it?.slug && navigate(`/products/${encodeURIComponent(it.slug)}`)}
-                          className="w-24 h-24 rounded-xl bg-gray-50 overflow-hidden shrink-0"
+                          className="w-24 h-24 rounded-xl bg-gray-50 overflow-hidden shrink-0 shadow-xl" 
                           title="Xem chi tiết"
                         >
                           {it?.imageUrl ? (
@@ -409,7 +409,7 @@ export default function CartPage() {
               </Link>
             </div>
 
-            <div className="rounded-2xl border border-gray-200 bg-white p-5 h-fit">
+            <div className="rounded-2xl border border-gray-200 bg-white p-5 h-fit shadow-xl">
               <div className="text-sm font-bold text-gray-900">Tóm tắt đơn hàng</div>
 
               <div className="mt-4">

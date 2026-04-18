@@ -65,7 +65,7 @@ const HomeCategoriesSection = () => {
           ? Array.from({ length: 8 }).map((_, i) => (
               <div
                 key={i}
-                className="w-full rounded-2xl border border-gray-200 bg-white/80 shadow-sm p-5"
+                className="w-full rounded-2xl border border-gray-200 bg-white/80 shadow-xl p-5"
               >
                 <div className="h-4 w-28 bg-gray-200 rounded animate-pulse" />
                 <div className="mt-2 h-3 w-44 bg-gray-100 rounded animate-pulse" />

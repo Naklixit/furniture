@@ -73,7 +73,7 @@ const ReviewCard = ({ r, globalIdx }) => {
   const reviewImageUrl = r?.images?.[0]?.url || "";
   return (
     <div className="px-2 pb-2">
-      <div className="h-full rounded-2xl border border-gray-200/80 bg-white p-4 shadow-md hover:shadow-lg hover:border-teal-100 transition-all duration-300 flex flex-col min-h-[200px]">
+      <div className="h-full rounded-2xl shadow-xl border border-gray-200/80 bg-white p-4 shadow-md hover:shadow-lg hover:border-teal-100 transition-all duration-300 flex flex-col min-h-[200px]">
         {reviewImageUrl ? (
           <div className="mb-3 overflow-hidden rounded-xl border border-gray-100 bg-gray-50">
             <img

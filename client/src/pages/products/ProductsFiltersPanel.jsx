@@ -11,7 +11,6 @@ const formatVND = (value) => {
   const n = Number(value || 0);
   if (!Number.isFinite(n)) return "0";
   try {
-    // vi-VN uses '.' as thousands separator
     return new Intl.NumberFormat("vi-VN").format(Math.round(n));
   } catch {
     return String(Math.round(n));
@@ -108,7 +107,7 @@ export default function ProductsFiltersPanel({
   return (
     <div
       className={
-        "bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden flex flex-col " +
+        "bg-white border border-gray-200 rounded-2xl shadow-xl overflow-hidden flex flex-col " +
         (compact ? "h-full" : "sticky top-24 h-[calc(100vh-120px)]")
       }
     >

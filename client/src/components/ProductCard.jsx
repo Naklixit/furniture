@@ -115,7 +115,7 @@ const ProductCard = ({ product, showAddToCart = true, onAddToCart, className = "
   return (
     <div
       className={
-        "group rounded-2xl border border-gray-200 bg-white shadow-sm hover:shadow-md transition-all overflow-hidden flex flex-col h-full " +
+        "group rounded-2xl border border-gray-200 bg-white shadow-xl hover:shadow-md transition-all overflow-hidden flex flex-col h-full " +
         className
       }
       onMouseEnter={() => setHovered(true)}

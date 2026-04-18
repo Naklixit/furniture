@@ -102,7 +102,6 @@ function Header() {
         setSuggestError(err?.message || "Không thể tìm kiếm");
         if (searchFocused) setSuggestOpen(true);
       } finally {
-        // ESLint rule: không dùng `return` trong `finally` vì có thể gây hành vi khó đoán.
         if (seq === reqSeqRef.current) setSuggestLoading(false);
       }
     }, 250);
@@ -114,7 +113,6 @@ function Header() {
     try {
       await logoutApi();
     } catch {
-      // Bỏ qua lỗi - vẫn xoá trạng thái đăng nhập cục bộ
     } finally {
       logout();
       setOpen(false);
@@ -177,7 +175,7 @@ function Header() {
 
         {/* Tìm kiếm */}
         <form
-          className="hidden md:flex items-center h-10 flex-1 basis-0 mx-6 min-w-[260px] max-w-[360px] lg:max-w-[440px] xl:max-w-[520px]"
+          className="hidden md:flex items-center h-10 flex-1 basis-0 mx-6 min-w-[260px] max-w-[360px] lg:max-w-[440px] xl:max-w-[520px shadow-xl]"
           onSubmit={handleSearchSubmit}
         >
           <div ref={searchRef} className="relative w-full h-full">

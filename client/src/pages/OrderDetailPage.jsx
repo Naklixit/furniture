@@ -108,7 +108,7 @@ export default function OrderDetailPage() {
           Quay lại
         </button>
 
-        <div className="mt-4 bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden anim-fade-up transition-shadow duration-200 hover:shadow-md">
+        <div className="mt-4 bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden anim-fade-up transition-shadow duration-200 shadow-xl">
           <div className="px-6 py-5 border-b border-gray-200 flex items-start justify-between gap-4">
             <div>
               <div className="text-lg font-extrabold text-gray-900">Chi tiết đơn hàng</div>
@@ -139,10 +139,10 @@ export default function OrderDetailPage() {
               <div className="text-sm text-gray-500">Không tìm thấy đơn hàng.</div>
             ) : (
               <>
-                <div className="rounded-2xl border border-gray-200 overflow-hidden transition-shadow duration-200 hover:shadow-sm">
+                <div className="rounded-2xl border border-gray-200 overflow-hidden transition-shadow duration-200 shadow-xl">
                   <div className="px-5 py-4 bg-gray-50 border-b border-gray-100 flex items-center gap-3">
                     <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-teal-50 border border-teal-100">
-                      <Truck size={16} className="text-teal-700" />
+                      <Truck size={20} className="text-teal-700" />
                     </span>
                     <div className="text-sm font-bold text-gray-900">Thông tin giao hàng</div>
                   </div>
@@ -180,10 +180,10 @@ export default function OrderDetailPage() {
                   </div>
                 </div>
 
-                <div className="mt-6 rounded-2xl border border-gray-200 overflow-hidden transition-shadow duration-200 hover:shadow-sm">
+                <div className="mt-6 rounded-2xl border border-gray-200 overflow-hidden transition-shadow duration-200 shadow-xl">
                   <div className="px-5 py-4 bg-gray-50 border-b border-gray-100 flex items-center gap-3">
                     <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-amber-50 border border-amber-200">
-                      <Armchair size={16} className="text-amber-700" />
+                      <Armchair size={20} className="text-amber-700" />
                     </span>
                     <div className="text-sm font-bold text-gray-900">Sản phẩm</div>
                   </div>

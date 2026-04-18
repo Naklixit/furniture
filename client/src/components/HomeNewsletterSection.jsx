@@ -43,8 +43,8 @@ const HomeNewsletterSection = () => {
             </div>
           </div>
 
-          {/* Benefits */}
-          <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-4 md:gap-8 text-sm text-gray-700">
+          {/* Benefits */}  
+          <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-4 md:gap-8 text-sm text-gray-700 ">
             <div className="flex items-center gap-2">
               <Gift size={16} className="text-teal-600" />
               <span>Giảm 10% đơn đầu</span>

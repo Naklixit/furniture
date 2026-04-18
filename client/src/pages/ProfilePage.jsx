@@ -495,11 +495,11 @@ export default function ProfilePage() {
               </>
             ) : (
               <>
-                <div className="px-6 py-5 border-b border-gray-200">
+                <div className="px-6 py-5 border-b drop-shadow border-gray-200 ">
                   <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                     <div>
                       <div className="text-xl font-bold text-gray-900">Đơn hàng của tôi</div>
-                      <div className="text-sm text-gray-500">Theo dõi và quản lý đơn hàng của bạn</div>
+                      <div className="text-sm text-gray-500 font-bold">Theo dõi và quản lý đơn hàng của bạn</div>
                     </div>
 
                     <button
@@ -561,7 +561,7 @@ export default function ProfilePage() {
                         {(orders || []).map((o) => (
                           <div
                             key={String(o?.id || "")}
-                            className="rounded-2xl border border-gray-200 bg-white overflow-hidden shadow-sm transition-all duration-200 hover:shadow-md hover:-translate-y-0.5"
+                            className="rounded-2xl border border-gray-200 bg-white overflow-hidden shadow-xl transition-all duration-200 hover:shadow-md hover:-translate-y-0.5"
                           >
                             {/* Header */}
                             <div className="px-6 py-4 bg-gray-50 flex items-center justify-between gap-4">
