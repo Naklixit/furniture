@@ -15,7 +15,7 @@ import OrderSuccessPage from "./pages/OrderSuccessPage";
 import OrderDetailPage from "./pages/OrderDetailPage";
 import { useAuth } from "./context/useAuth";
 import ScrollToTop from "./components/ScrollToTop";
-// import AiAssistantWidget from "./components/AiAssistantWidget";
+import AiAssistantWidget from "./components/AiAssistantWidget";
 function App() {
   const { user, isAuthed, bootstrapped } = useAuth();
   const location = useLocation();
@@ -144,7 +144,7 @@ function App() {
         />
         <Route path="*" element={<Navigate to={isAuthed ? defaultAuthedPath : "/"} replace />} />
       </Routes>
-      {/* {shouldShowAiWidget && <AiAssistantWidget />} */}
+      {shouldShowAiWidget && <AiAssistantWidget />}
     </>
   );
 }

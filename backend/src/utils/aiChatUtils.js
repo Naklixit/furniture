@@ -65,7 +65,13 @@ const parsePriceConstraintsFromMessage = (message) => {
   const raw = normalizeText(message);
   const folded = foldText(message);
   if (!raw && !folded)
-    return { minPrice: null, maxPrice: null, hasConstraint: false };
+    return {
+      minPrice: null,
+      maxPrice: null,
+      minPriceExclusive: false,
+      maxPriceExclusive: false,
+      hasConstraint: false,
+    };
 
   const t = folded || raw;
 
@@ -82,6 +88,8 @@ const parsePriceConstraintsFromMessage = (message) => {
       return {
         minPrice: Math.min(a, b),
         maxPrice: Math.max(a, b),
+        minPriceExclusive: false,
+        maxPriceExclusive: false,
         hasConstraint: true,
       };
     }
@@ -97,6 +105,8 @@ const parsePriceConstraintsFromMessage = (message) => {
       return {
         minPrice: Math.min(a, b),
         maxPrice: Math.max(a, b),
+        minPriceExclusive: false,
+        maxPriceExclusive: false,
         hasConstraint: true,
       };
     }
@@ -122,7 +132,13 @@ const parsePriceConstraintsFromMessage = (message) => {
   }
 
   if (!mentions.length) {
-    return { minPrice: null, maxPrice: null, hasConstraint: false };
+    return {
+      minPrice: null,
+      maxPrice: null,
+      minPriceExclusive: false,
+      maxPriceExclusive: false,
+      hasConstraint: false,
+    };
   }
 
   const minMention = Math.min(...mentions);
@@ -131,13 +147,23 @@ const parsePriceConstraintsFromMessage = (message) => {
   const hasTroXuong = /tro\s*xuong/i.test(t);
   const hasTroLen = /tro\s*len/i.test(t);
   const hasUnder =
-    /\b(duoi|toi\s*da|khong\s*qua|max|<=|nho\s*hon)\b/i.test(t) || hasTroXuong;
+    /\b(duoi|toi\s*da|khong\s*qua|max|<=|<|nho\s*hon)\b/i.test(t) ||
+    hasTroXuong;
   const hasFromNumber = /\btu\s*\d/i.test(t) && !hasTroXuong;
   const hasOver =
-    /\b(tren|min|>=|toi\s*thieu|lon\s*hon)\b/i.test(t) ||
+    /\b(tren|min|>=|>|toi\s*thieu|lon\s*hon)\b/i.test(t) ||
     hasTroLen ||
     hasFromNumber;
   const hasApprox = /\b(khoang|tam|xap\s*xi|around|approx)\b/i.test(t);
+
+  // Exclusive/inclusive semantics
+  // - "dưới", "nhỏ hơn", "<" => strict <
+  // - "tối đa", "không quá", "<=", "trở xuống" => <=
+  // - "trên", "lớn hơn", ">" => strict >
+  // - "tối thiểu", ">=", "từ" => >=
+  const maxPriceExclusive =
+    /\b(duoi|nho\s*hon|<)\b/i.test(t) && !/<=/i.test(t) && !hasTroXuong;
+  const minPriceExclusive = /\b(tren|lon\s*hon|>)\b/i.test(t) && !/>=/i.test(t);
 
   let minPrice = null;
   let maxPrice = null;
@@ -163,6 +189,8 @@ const parsePriceConstraintsFromMessage = (message) => {
   return {
     minPrice,
     maxPrice,
+    minPriceExclusive: Boolean(minPriceExclusive && minPrice != null),
+    maxPriceExclusive: Boolean(maxPriceExclusive && maxPrice != null),
     hasConstraint: minPrice != null || maxPrice != null,
   };
 };
@@ -251,7 +279,13 @@ const parseRatingConstraints = (message) => {
 const parseUserConstraints = (message) => {
   const raw = normalizeText(message);
   const t = foldText(message);
-  const { minPrice, maxPrice, hasConstraint } =
+  const {
+    minPrice,
+    maxPrice,
+    minPriceExclusive,
+    maxPriceExclusive,
+    hasConstraint,
+  } =
     parsePriceConstraintsFromMessage(message);
   const { minRating, maxRating, hasRatingConstraint } =
     parseRatingConstraints(message);
@@ -299,6 +333,8 @@ const parseUserConstraints = (message) => {
   return {
     minPrice,
     maxPrice,
+    minPriceExclusive,
+    maxPriceExclusive,
     hasPriceConstraint: hasConstraint,
     minRating,
     maxRating,
@@ -311,7 +347,7 @@ const parseUserConstraints = (message) => {
   };
 };
 
-const withinPrice = (product, { minPrice, maxPrice }) => {
+const withinPrice = (product, { minPrice, maxPrice, minPriceExclusive, maxPriceExclusive }) => {
   const prices = [
     Number(product?.effectivePrice || 0),
     Number(product?.originalPrice || 0),
@@ -320,8 +356,18 @@ const withinPrice = (product, { minPrice, maxPrice }) => {
 
   if (!prices.length) return false;
 
-  if (maxPrice != null && !prices.some((p) => p <= maxPrice)) return false;
-  if (minPrice != null && !prices.some((p) => p >= minPrice)) return false;
+  if (maxPrice != null) {
+    const ok = maxPriceExclusive
+      ? prices.some((p) => p < maxPrice)
+      : prices.some((p) => p <= maxPrice);
+    if (!ok) return false;
+  }
+  if (minPrice != null) {
+    const ok = minPriceExclusive
+      ? prices.some((p) => p > minPrice)
+      : prices.some((p) => p >= minPrice);
+    if (!ok) return false;
+  }
 
   return true;
 };
@@ -380,17 +426,24 @@ const buildProductHaystack = (product) => {
 
 const matchesCategoryTokens = (product, tokens) => {
   if (!tokens?.length) return true;
+  const cat = foldText(product?.categoryName || "");
+  const nameSlug = foldText([product?.name, product?.slug].filter(Boolean).join(" "));
   const hay = buildProductHaystack(product);
 
   return tokens.some((tok) => {
-    if (tok === "ghe") return /\bghe\b|\bchair\b/.test(hay);
-    if (tok === "sofa") return /\bsofa\b/.test(hay);
-    if (tok === "ban") return /\bban\b|\btable\b/.test(hay);
-    if (tok === "giuong") return /\bgiuong\b|\bbed\b/.test(hay);
-    if (tok === "den") return /\bden\b|\blamp\b|\blight\b/.test(hay);
-    if (tok === "tuquanao") return /\btu\s*quan\s*ao\b|\bwardrobe\b/.test(hay);
-    if (tok === "tu") return /\btu\b|\bcabinet\b|\bwardrobe\b/.test(hay);
-    if (tok === "ke") return /\bke\b|\bshelf\b/.test(hay);
+    // Prefer matching by categoryName to avoid false positives like "tủ đầu giường"
+    // (which contains "giường" in name/description but is not in bed category).
+    if (tok === "ghe") return /\bghe\b|\bchair\b/.test(cat || hay);
+    if (tok === "sofa") return /\bsofa\b/.test(cat || hay);
+    if (tok === "ban") return /\bban\b|\btable\b/.test(cat || hay);
+    if (tok === "giuong") {
+      if (cat) return /\bgiuong\b|\bbed\b/.test(cat);
+      return /\bgiuong\b|\bbed\b/.test(nameSlug || hay);
+    }
+    if (tok === "den") return /\bden\b|\blamp\b|\blight\b/.test(cat || hay);
+    if (tok === "tuquanao") return /\btu\s*quan\s*ao\b|\bwardrobe\b/.test(cat || hay);
+    if (tok === "tu") return /\btu\b|\bcabinet\b|\bwardrobe\b/.test(cat || hay);
+    if (tok === "ke") return /\bke\b|\bshelf\b/.test(cat || hay);
     return hay.includes(tok);
   });
 };
@@ -544,6 +597,10 @@ const formatProductOneLiner = (p) => {
 };
 
 const appendProductSnippetsToReply = (reply, products) => {
+
+  const enabled = String(process.env.AI_APPEND_PRODUCT_SNIPPETS || "").trim();
+  if (!/^(1|true|yes|on)$/i.test(enabled)) return String(reply || "").trim();
+
   const list = Array.isArray(products) ? products : [];
   if (!list.length) return String(reply || "").trim();
 
@@ -559,6 +616,89 @@ const appendProductSnippetsToReply = (reply, products) => {
   const suffix = `\n\nGợi ý nhanh (tóm tắt):\n${lines}`;
   if (/Gợi ý nhanh\s*\(/i.test(base)) return base;
   return (base ? base + suffix : suffix.trim()).trim();
+};
+
+const inferRequestedProductCount = (message) => {
+  const t = foldText(message);
+  if (!t) return null;
+
+  // 1) Digits near product words.
+  const digitMatches = [
+    /\btop\s*(\d{1,2})\b/i,
+    /\b(\d{1,2})\s*(?:san\s*pham|sp|mau|item|cai)\b/i,
+    /\b(\d{1,2})\s*(?:giuong|ghe|sofa|ban|den|tu|ke)\b/i,
+    /\b(?:goi\s*y|liet\s*ke|dua\s*ra|chon|tim)\s*(\d{1,2})\b/i,
+  ];
+  for (const rx of digitMatches) {
+    const m = t.match(rx);
+    if (m) {
+      const n = Number.parseInt(m[1], 10);
+      if (Number.isFinite(n) && n >= 1 && n <= 10) return n;
+    }
+  }
+
+  // 2) Vietnamese number words near product words.
+  const wordToNum = {
+    mot: 1,
+    hai: 2,
+    ba: 3,
+    bon: 4,
+    tu: 4,
+    nam: 5,
+    sau: 6,
+    bay: 7,
+    tam: 8,
+    chin: 9,
+    muoi: 10,
+  };
+  const wordKeys = Object.keys(wordToNum).join("|");
+  const wordRx = new RegExp(
+    `\\b(${wordKeys})\\b\\s+(?:san\\s*pham|sp|mau|item|cai)\\b`,
+    "i",
+  );
+  const wm = t.match(wordRx);
+  if (wm) {
+    const n = wordToNum[String(wm[1] || "").toLowerCase()];
+    if (Number.isFinite(n) && n >= 1 && n <= 10) return n;
+  }
+
+  const wordCatRx = new RegExp(
+    `\\b(${wordKeys})\\b\\s+(?:giuong|ghe|sofa|ban|den|tu|ke)\\b`,
+    "i",
+  );
+  const wcm = t.match(wordCatRx);
+  if (wcm) {
+    const n = wordToNum[String(wcm[1] || "").toLowerCase()];
+    if (Number.isFinite(n) && n >= 1 && n <= 10) return n;
+  }
+
+  return null;
+};
+
+const inferDesiredRecommendationLimit = (message, { defaultLimit = 3 } = {}) => {
+  const requested = inferRequestedProductCount(message);
+  const base = requested != null ? requested : defaultLimit;
+  // Safety cap: keep responses short for chat UI.
+  return Math.max(1, Math.min(5, base));
+};
+
+const shouldRequireReviewedProducts = (message, constraints) => {
+  const t = foldText(message);
+  if (!t) return false;
+
+  const mentionsReview =
+    /\b(danh\s*gia|review|rating)\b/i.test(t) ||
+    /\b(luot\s*danh\s*gia|nhieu\s*danh\s*gia|co\s*danh\s*gia)\b/i.test(t);
+  if (!mentionsReview) return false;
+
+  // If user talks about reviews in a superlative / “top” way, avoid recommending unrated products.
+  const isTopLike = /\b(top|cao\s*nhat|noi\s*bat|tot\s*nhat|hang\s*dau|nhieu\s*nhat)\b/i.test(
+    t,
+  );
+  if (isTopLike) return true;
+
+  // If constraints already imply rating focus, be stricter when user explicitly mentions reviews.
+  return Boolean(constraints?.wantsHighRating);
 };
 
 const extractKeywords = (message) => {
@@ -765,7 +905,7 @@ const localFallback = ({ candidateCards, keywords, constraints }) => {
 
   const recommended = sorted.slice(0, 5);
   const reply =
-    "Hiện dịch vụ AI đang bận/giới hạn nên mình gợi ý nhanh theo dữ liệu sản phẩm trên website. " +
+    "Hiện dịch vụ AI đang bận/giới hạn nên mình tạm tư vấn theo dữ liệu sản phẩm trên website. " +
     "Bạn cho mình biết thêm kích thước/phong cách (gỗ, hiện đại, tối giản...) và ngân sách để mình lọc sát hơn nhé.";
 
   return { reply, recommended, model: "fallback-local" };
@@ -829,48 +969,41 @@ const enforceAndFillRecommendations = ({
   return out;
 };
 
-// const buildFallbackReplyFromGroqError = (err) => {
-//   const code = String(err?.response?.data?.error?.code || "");
-//   const msg = String(err?.response?.data?.error?.message || err?.message || "");
-//   const modelTried = String(err?.modelTried || "");
+const buildFallbackReplyFromGroqError = (err) => {
+  const status = err?.status || err?.response?.status;
+  const code = String(err?.response?.data?.error?.code || "");
+  const msg = String(err?.response?.data?.error?.message || err?.message || "");
 
-//   // if (
-//   //   code === "model_permission_blocked_project" ||
-//   //   code === "model_permission_blocked_org" ||
-//   //   /^model_permission_blocked_/i.test(code) ||
-//   //   /blocked at the project level/i.test(msg)
-//   // ) {
-//   //   return (
-//   //     `Model AI trên Groq đang bị chặn theo cấu hình quyền (project/org)${modelTried ? `: ${modelTried}` : ""}. ` +
-//   //     "Mình tạm gợi ý theo dữ liệu sản phẩm trên website. Bạn kiểm tra Groq Console > Project Limits rồi thử lại nhé."
-//   //   );
-//   // }
+  // Keep wording simple; the UI already shows products separately.
+  if (status === 401 || status === 403) {
+    return (
+      "Hiện dịch vụ AI đang gặp vấn đề quyền truy cập/cấu hình nên mình tạm tư vấn theo dữ liệu sản phẩm trên website. " +
+      "Bạn thử lại sau giúp mình nhé."
+    );
+  }
 
-//   // if (
-//   //   code === "model_decommissioned" ||
-//   //   /decommissioned|no longer supported/i.test(msg)
-//   // ) {
-//   //   return (
-//   //     "Model AI bạn cấu hình trên Groq đã bị ngừng hỗ trợ (decommissioned). " +
-//   //     "Mình tạm gợi ý theo dữ liệu sản phẩm trên website; bạn đổi sang model khác trong Groq Console rồi thử lại nhé."
-//   //   );
-//   // }
+  if (
+    code === "model_decommissioned" ||
+    /decommissioned|no longer supported/i.test(msg)
+  ) {
+    return (
+      "Model AI bạn cấu hình hiện không còn được hỗ trợ, nên mình tạm tư vấn theo dữ liệu sản phẩm trên website. " +
+      "Bạn thử đổi model trong Groq Console rồi chat lại nhé."
+    );
+  }
 
-//   // if (
-//   //   (err?.status || err?.response?.status) === 429 ||
-//   //   /too many requests|rate|quota/i.test(msg)
-//   // ) {
-//   //   return (
-//   //     "Groq đang giới hạn tốc độ/quota nên mình tạm gợi ý theo dữ liệu sản phẩm trên website. " +
-//   //     "Bạn thử lại sau ít phút hoặc nâng hạn mức Groq nhé."
-//   //   );
-//   // }
+  if (status === 429 || /too many requests|rate|quota/i.test(msg)) {
+    return (
+      "Dịch vụ AI đang bị giới hạn tốc độ/quota nên mình tạm tư vấn theo dữ liệu sản phẩm trên website. " +
+      "Bạn thử lại sau ít phút nhé."
+    );
+  }
 
-//   // return (
-//   //   "Hiện dịch vụ AI đang gặp lỗi kết nối/cấu hình nên mình tạm gợi ý theo dữ liệu sản phẩm trên website. " +
-//   //   "Bạn thử lại giúp mình nhé."
-//   // );
-// };
+  return (
+    "Hiện dịch vụ AI đang bận/gặp lỗi kết nối nên mình tạm tư vấn theo dữ liệu sản phẩm trên website. " +
+    "Bạn thử lại giúp mình nhé."
+  );
+};
 
 module.exports = {
   normalizeText,
@@ -888,10 +1021,13 @@ module.exports = {
   detectProductIntent,
   detectOutOfScopeNonFurnitureRequest,
   appendProductSnippetsToReply,
+  inferDesiredRecommendationLimit,
+  shouldRequireReviewedProducts,
   extractKeywords,
   uniqueById,
   pickForAi,
   isGroqAvailabilityError,
   localFallback,
   enforceAndFillRecommendations,
+  buildFallbackReplyFromGroqError,
 };

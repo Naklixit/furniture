@@ -82,6 +82,7 @@ const recommendProductsWithGroq = async ({
   message,
   candidates,
   constraints,
+  limit = 3,
 }) => {
   const { apiKey, baseURL } = groqSingleton();
 
@@ -185,13 +186,15 @@ const recommendProductsWithGroq = async ({
   if (constraints) {
     const cParts = [];
     if (constraints.maxPrice != null) {
+      const op = constraints.maxPriceExclusive ? "<" : "<=";
       cParts.push(
-        `- Người dùng yêu cầu giá DƯỚI ${constraints.maxPrice.toLocaleString("vi-VN")}đ. BẮT BUỘC chỉ chọn sản phẩm có effectivePrice <= ${constraints.maxPrice}. Tuyệt đối KHÔNG chọn sản phẩm vượt ngân sách.`,
+        `- Người dùng yêu cầu giá DƯỚI ${constraints.maxPrice.toLocaleString("vi-VN")}đ. BẮT BUỘC chỉ chọn sản phẩm có effectivePrice ${op} ${constraints.maxPrice}. Tuyệt đối KHÔNG chọn sản phẩm vượt ngân sách.`,
       );
     }
     if (constraints.minPrice != null) {
+      const op = constraints.minPriceExclusive ? ">" : ">=";
       cParts.push(
-        `- Người dùng yêu cầu giá TỪ ${constraints.minPrice.toLocaleString("vi-VN")}đ trở lên. BẮT BUỘC chỉ chọn sản phẩm có effectivePrice >= ${constraints.minPrice}.`,
+        `- Người dùng yêu cầu giá TỪ ${constraints.minPrice.toLocaleString("vi-VN")}đ trở lên. BẮT BUỘC chỉ chọn sản phẩm có effectivePrice ${op} ${constraints.minPrice}.`,
       );
     }
     if (constraints.minRating != null) {
@@ -226,7 +229,10 @@ Hãy trả về JSON đúng schema sau:
 }
 
 HƯỚNG DẪN:
-- productIndexes chỉ chứa các số #idx từ danh sách (tối đa 3 sản phẩm tối ưu nhất).
+- productIndexes chỉ chứa các số #idx từ danh sách (tối đa ${Math.max(
+    1,
+    Math.min(5, Number(limit || 3)),
+  )} sản phẩm tối ưu nhất). Nếu không đủ sản phẩm phù hợp, có thể trả về ít hơn.
 - Nếu người dùng yêu cầu giá cụ thể: chỉ chọn sản phẩm trong ngân sách (KHÔNG chọn ngoài).
 - Nếu yêu cầu đánh giá cao: ưu tiên ratingAvg cao.
 - Reply: Không máy móc, tự nhiên, giải thích tại sao sản phẩm phù hợp.

@@ -100,7 +100,15 @@ export default function AiAssistantWidget() {
 
     try {
       setLoading(true);
-      const res = await aiChatApi({ message: text });
+      const history = (Array.isArray(messages) ? messages : [])
+        .slice(-12)
+        .map((m) => ({
+          role: String(m?.role || ""),
+          text: String(m?.text || ""),
+        }))
+        .filter((m) => (m.role === "user" || m.role === "assistant") && m.text);
+
+      const res = await aiChatApi({ message: text, history });
       const reply = String(res?.reply || "").trim();
       const products = Array.isArray(res?.products) ? res.products : [];
 
