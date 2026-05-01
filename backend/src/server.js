@@ -2,23 +2,29 @@ const express = require("express");
 const bodyParser = require("body-parser");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
-require("dotenv").config({ override: true });
+// Load .env only for local development to avoid overriding platform env vars.
+if (process.env.NODE_ENV !== "production") {
+  require("dotenv").config();
+}
 const connectDB = require("./config/connectDB.js");
 const routes = require("./routes/index.routes.js");
 const app = express();
-const port = 3000;
+const port = Number(process.env.PORT) || 3000;
 // Middleware
-const allowedOrigins = [process.env.CLIENT_URL].filter(Boolean);
+const allowedOrigins = [process.env.CLIENT_URL]
+  .filter(Boolean)
+  .map((x) => String(x).trim().replace(/\/$/, ""));
 
 app.use(
   cors({
     origin: (origin, callback) => {
       if (!origin) return callback(null, true);
+      const cleanedOrigin = String(origin).trim().replace(/\/$/, "");
       const isViteDevOrigin =
-        /^http:\/\/(localhost|127\.0\.0\.1):517\d{1,2}$/.test(origin);
+        /^http:\/\/(localhost|127\.0\.0\.1):517\d{1,2}$/.test(cleanedOrigin);
       if (isViteDevOrigin) return callback(null, true);
-      if (allowedOrigins.includes(origin)) return callback(null, true);
-      return callback(new Error(`CORS bị chặn cho origin: ${origin}`));
+      if (allowedOrigins.includes(cleanedOrigin)) return callback(null, true);
+      return callback(new Error(`CORS bị chặn cho origin: ${cleanedOrigin}`));
     },
     credentials: true,
   }),

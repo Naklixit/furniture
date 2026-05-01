@@ -5,6 +5,7 @@
     "main": "index.js",
     "scripts": {
         "dev": "nodemon src/server.js",
+        "start": "node src/server.js",
         "seed": "node src/scripts/seed.js",
         "seed:wipe": "node src/scripts/seed.js --wipe",
         "test": "echo \"Error: no test specified\" && exit 1"
