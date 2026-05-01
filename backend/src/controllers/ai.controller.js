@@ -3,6 +3,7 @@ const { recommendProductsWithGroq } = require("../services/groq.service");
 const { containsBadWords } = require("../utils/badWords");
 const {
   extractKeywords,
+  foldText,
   formatVnd,
   parseUserConstraints,
   detectProductIntent,
@@ -17,16 +18,59 @@ const {
   localFallback,
   enforceAndFillRecommendations,
   buildFallbackReplyFromGroqError,
-  appendProductSnippetsToReply,
+  inferDesiredRecommendationLimit,
+  shouldRequireReviewedProducts,
 } = require("../utils/aiChatUtils");
 
 const MAX_MESSAGE_LEN = 600;
 const MAX_CANDIDATES = 30;
 
+const pickLastUserTextFromHistory = (history) => {
+  const list = Array.isArray(history) ? history : [];
+  for (let i = list.length - 1; i >= 0; i -= 1) {
+    const it = list[i];
+    const role = String(it?.role || "").toLowerCase();
+    const text = String(it?.text || it?.content || "").trim();
+    if (role === "user" && text) return text;
+  }
+  return "";
+};
+
+const shouldInheritContext = ({ message, constraints }) => {
+  const t = foldText(message);
+  if (!t) return false;
+
+  // If current message already names a category/material, don't inherit.
+  if (constraints?.categoryTokens?.length) return false;
+  if (constraints?.hasMaterialConstraint) return false;
+
+  // Follow-up patterns: user is adjusting constraints rather than starting new topic.
+  if (constraints?.hasPriceConstraint || constraints?.hasRatingConstraint)
+    return true;
+  if (constraints?.wantsOnSale) return true;
+
+  return /\b(duoi|tren|tu\s*\d|toi\s*da|khong\s*qua|gia|trieu|k|nghin|doi\s*gia|giam|tang|nua|di|nhe|ok)\b/i.test(
+    t,
+  );
+};
+
+const inheritContextConstraints = ({ current, previous }) => {
+  const out = { ...current };
+  if (!out.categoryTokens?.length && previous?.categoryTokens?.length) {
+    out.categoryTokens = previous.categoryTokens;
+  }
+  if (!out.hasMaterialConstraint && previous?.hasMaterialConstraint) {
+    out.materialTokens = previous.materialTokens || [];
+    out.hasMaterialConstraint = (out.materialTokens || []).length > 0;
+  }
+  return out;
+};
+
 const aiChat = async (req, res, next) => {
   try {
     const messageRaw = req.body?.message;
     const message = String(messageRaw || "").trim();
+    const history = Array.isArray(req.body?.history) ? req.body.history : [];
 
     if (!message) {
       return res
@@ -74,7 +118,21 @@ const aiChat = async (req, res, next) => {
     }
 
     const keywords = extractKeywords(message);
-    const constraints = parseUserConstraints(message);
+    let constraints = parseUserConstraints(message);
+
+    const prevUserText = pickLastUserTextFromHistory(history);
+    if (prevUserText && shouldInheritContext({ message, constraints })) {
+      const prevConstraints = parseUserConstraints(prevUserText);
+      constraints = inheritContextConstraints({
+        current: constraints,
+        previous: prevConstraints,
+      });
+    }
+
+    const desiredLimit = inferDesiredRecommendationLimit(message, {
+      defaultLimit: 3,
+    });
+    const requireReviewed = shouldRequireReviewedProducts(message, constraints);
     const debug =
       String(req.query?.debug || "") === "1" ? { constraints, intent } : null;
 
@@ -152,15 +210,17 @@ const aiChat = async (req, res, next) => {
         const pf = { isActive: true };
         const pOr = [];
         if (constraints.maxPrice != null) {
+          const maxOp = constraints.maxPriceExclusive ? "$lt" : "$lte";
           pOr.push(
-            { originalPrice: { $gt: 0, $lte: constraints.maxPrice } },
-            { salePrice: { $gt: 0, $lte: constraints.maxPrice } },
+            { originalPrice: { $gt: 0, [maxOp]: constraints.maxPrice } },
+            { salePrice: { $gt: 0, [maxOp]: constraints.maxPrice } },
           );
         }
         if (constraints.minPrice != null) {
+          const minOp = constraints.minPriceExclusive ? "$gt" : "$gte";
           pOr.push(
-            { originalPrice: { $gte: constraints.minPrice } },
-            { salePrice: { $gte: constraints.minPrice } },
+            { originalPrice: { [minOp]: constraints.minPrice } },
+            { salePrice: { [minOp]: constraints.minPrice } },
           );
         }
         if (pOr.length) pf.$or = pOr;
@@ -330,7 +390,25 @@ const aiChat = async (req, res, next) => {
       });
     }
 
-    const aiPool = constrainedCards.length ? constrainedCards : candidateCards;
+    let aiPool = constrainedCards.length ? constrainedCards : candidateCards;
+    if (requireReviewed) {
+      const reviewed = aiPool.filter((p) => Number(p?.ratingCount || 0) > 0);
+      if (reviewed.length === 0) {
+        return res.json({
+          success: true,
+          reply:
+            "Hiện tại mình chưa thấy sản phẩm nào phù hợp có đánh giá trên website (có thể các sản phẩm chưa có review). " +
+            "Bạn muốn mình gợi ý theo tiêu chí khác như giá/chất liệu/phong cách không?",
+          model: "rule-reviewed-none",
+          products: [],
+          ...(debug
+            ? { debug: { ...debug, desiredLimit, requireReviewed } }
+            : {}),
+        });
+      }
+      aiPool = reviewed;
+    }
+
     const aiCandidates = aiPool.map((p, idx) => ({ ...p, idx }));
 
     let aiRes = null;
@@ -339,6 +417,7 @@ const aiChat = async (req, res, next) => {
         message,
         candidates: aiCandidates,
         constraints,
+        limit: desiredLimit,
       });
     } catch (err) {
       if (!isGroqAvailabilityError(err)) throw err;
@@ -362,19 +441,23 @@ const aiChat = async (req, res, next) => {
 
       const fb = localFallback({
         message,
-        candidateCards: constrainedCards.length
-          ? constrainedCards
-          : candidateCards,
+        candidateCards: aiPool,
         keywords,
         constraints,
       });
       fb.reply = buildFallbackReplyFromGroqError(err);
+
+      const fbProducts = Array.isArray(fb.recommended)
+        ? fb.recommended.slice(0, desiredLimit)
+        : [];
       return res.json({
         success: true,
-        reply: appendProductSnippetsToReply(fb.reply, fb.recommended),
+        reply: String(fb.reply || "").trim(),
         model: fb.model,
-        products: fb.recommended,
-        ...(debug ? { debug } : {}),
+        products: fbProducts,
+        ...(debug
+          ? { debug: { ...debug, desiredLimit, requireReviewed } }
+          : {}),
       });
     }
 
@@ -388,7 +471,7 @@ const aiChat = async (req, res, next) => {
     );
 
     const chosenRaw = Array.from(chosenSet)
-      .slice(0, 3)
+      .slice(0, desiredLimit)
       .map((idx) => aiPool[idx])
       .filter(Boolean);
 
@@ -396,7 +479,7 @@ const aiChat = async (req, res, next) => {
       chosen: chosenRaw,
       pool: aiPool,
       constraints,
-      limit: 3,
+      limit: desiredLimit,
     });
 
     const recommended = enforced.map((p) => ({
@@ -418,10 +501,10 @@ const aiChat = async (req, res, next) => {
 
     return res.json({
       success: true,
-      reply: appendProductSnippetsToReply(aiRes.reply, recommended),
+      reply: String(aiRes.reply || "").trim(),
       model: aiRes.modelUsed || "",
       products: recommended,
-      ...(debug ? { debug } : {}),
+      ...(debug ? { debug: { ...debug, desiredLimit, requireReviewed } } : {}),
     });
   } catch (err) {
     return next(err);
