@@ -9,6 +9,13 @@ const {
   deleteResourcesByPrefix,
   deleteFolder,
 } = require("../services/cloudinary.service");
+const { parsePositiveInt, parseNonNegativeNumber } = require("../utils/validators");
+const {
+  escapeRegex,
+  normalizeName,
+  buildNameExactRegex,
+} = require("../utils/regex");
+const { mapLimit } = require("../utils/concurrency");
 
 const getQtySoldMap = async (productIds) => {
   const ids = (Array.isArray(productIds) ? productIds : [])
@@ -26,55 +33,6 @@ const getQtySoldMap = async (productIds) => {
   ]);
 
   return new Map(rows.map((r) => [String(r._id), Number(r.qtySold || 0)]));
-};
-
-const mapLimit = async (arr, limit, mapper) => {
-  const list = Array.isArray(arr) ? arr : [];
-  const size = list.length;
-  if (size === 0) return [];
-
-  const concurrency = Math.max(1, Math.min(Number(limit) || 1, size));
-  const results = new Array(size);
-  let nextIndex = 0;
-
-  const workers = Array.from({ length: concurrency }).map(async () => {
-    while (true) {
-      const current = nextIndex;
-      nextIndex += 1;
-      if (current >= size) break;
-      results[current] = await mapper(list[current], current);
-    }
-  });
-
-  await Promise.all(workers);
-  return results;
-};
-
-const escapeRegex = (value) =>
-  String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-
-const normalizeName = (value) => {
-  if (typeof value !== "string") return "";
-  return value.trim().replace(/\s+/g, " ");
-};
-
-const buildNameExactRegex = (normalizedName) => {
-  const escaped = escapeRegex(normalizedName);
-  const wsLoose = escaped.replace(/ /g, "\\s+");
-  return new RegExp(`^${wsLoose}$`, "i");
-};
-
-const parsePositiveInt = (value, fallback) => {
-  const n = Number.parseInt(value, 10);
-  if (!Number.isFinite(n) || n <= 0) return fallback;
-  return n;
-};
-
-const parseNonNegativeNumber = (value, fallback = 0) => {
-  if (value === null || value === undefined || value === "") return fallback;
-  const n = Number(value);
-  if (!Number.isFinite(n) || n < 0) return null;
-  return n;
 };
 
 const ensureUniqueSlug = async ({ baseSlug, currentId }) => {

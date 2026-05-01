@@ -1,25 +1,11 @@
 const Category = require("../models/Category.model");
 const { slugify } = require("../utils/slug");
-
-const escapeRegex = (value) =>
-  String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-
-const normalizeName = (value) => {
-  if (typeof value !== "string") return "";
-  return value.trim().replace(/\s+/g, " ");
-};
-
-const buildNameExactRegex = (normalizedName) => {
-  const escaped = escapeRegex(normalizedName);
-  const wsLoose = escaped.replace(/ /g, "\\s+");
-  return new RegExp(`^${wsLoose}$`, "i");
-};
-
-const parsePositiveInt = (value, fallback) => {
-  const n = Number.parseInt(value, 10);
-  if (!Number.isFinite(n) || n <= 0) return fallback;
-  return n;
-};
+const { parsePositiveInt } = require("../utils/validators");
+const {
+  escapeRegex,
+  normalizeName,
+  buildNameExactRegex,
+} = require("../utils/regex");
 
 const ensureUniqueSlug = async ({ baseSlug, currentId }) => {
   let slug = baseSlug;

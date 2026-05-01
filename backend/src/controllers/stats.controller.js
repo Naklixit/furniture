@@ -2,7 +2,7 @@ const Order = require("../models/Order.model");
 const User = require("../models/User.model");
 const Review = require("../models/Review.model");
 
-const { parsePositiveInt } = require("../utils/orderUtils");
+const { parsePositiveInt } = require("../utils/validators");
 
 const DEFAULT_DAYS = 30;
 const MAX_DAYS = 365;

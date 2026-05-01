@@ -1,4 +1,6 @@
 const User = require("../models/User.model");
+const { parsePositiveInt } = require("../utils/validators");
+const { escapeRegex } = require("../utils/regex");
 
 const pickUser = (user) => {
   return {
@@ -11,16 +13,6 @@ const pickUser = (user) => {
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
   };
-};
-
-const escapeRegex = (value) => {
-  return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-};
-
-const parsePositiveInt = (value, fallback) => {
-  const n = Number.parseInt(value, 10);
-  if (!Number.isFinite(n) || n <= 0) return fallback;
-  return n;
 };
 
 const buildUserSearchQuery = (rawSearch) => {

@@ -397,7 +397,7 @@ export default function ProductDetailPage() {
               onClose={() => setLightboxOpen(false)}
             />
             <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-10 items-start">
-              <div className="rounded-2xl bg-white border border-gray-200 overflow-hidden self-start">
+              <div className="rounded-2xl bg-white border border-gray-200 overflow-hidden self-start shadow-xl">
               <div className="relative aspect-[4/3] bg-gray-50">
                 {activeUrl ? (
                   <button
@@ -441,7 +441,7 @@ export default function ProductDetailPage() {
               ) : null}
             </div>
 
-              <div className="rounded-2xl bg-white border border-gray-200 p-6">
+              <div className="rounded-2xl bg-white border border-gray-200 p-6 shadow-xl">
                 <div className="text-sm text-gray-500 flex items-center gap-3">
                   {product.brand ? (
                     <span className="font-semibold text-gray-700">{product.brand}</span>
@@ -577,7 +577,7 @@ export default function ProductDetailPage() {
             <div
               ref={reviewsAnchorRef}
               id="product-reviews"
-              className="mt-10 rounded-2xl border border-gray-200 bg-white overflow-hidden scroll-mt-24"
+              className="mt-10 rounded-2xl border border-gray-200 bg-white overflow-hidden scroll-mt-24 shadow-xl"
             >
               <div className="px-6 pt-4 flex items-center gap-6 border-b border-gray-100">
                 <button
@@ -600,7 +600,7 @@ export default function ProductDetailPage() {
                 >
                   Đánh giá ({Math.max(0, Number(product?.ratingCount || 0))})
                 </button>
-              </div>
+              </div>  
 
               <div className="p-6">
                 <div key={tabPanelKey} className="anim-fade-up">

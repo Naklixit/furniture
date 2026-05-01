@@ -1,21 +1,12 @@
 const DiscountCode = require("../models/DiscountCode.model");
 const mongoose = require("mongoose");
 
-const {
-  escapeRegex,
-  parsePositiveInt,
-  normalizeCode,
-} = require("../utils/orderUtils");
+const { parsePositiveInt, parseNonNegativeNumber } = require("../utils/validators");
+const { normalizeCode } = require("../utils/regex");
 
+// Simple utility for safe property checking
 const hasOwn = (obj, key) =>
   Object.prototype.hasOwnProperty.call(obj || {}, key);
-
-const parseNonNegativeNumber = (value, fallback = 0) => {
-  if (value === null || value === undefined || value === "") return fallback;
-  const n = Number(value);
-  if (!Number.isFinite(n) || n < 0) return null;
-  return n;
-};
 
 const parseDateInput = (value, mode) => {
   if (value === null || value === undefined || value === "") return null;

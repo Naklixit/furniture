@@ -4,34 +4,8 @@ const Order = require("../models/Order.model");
 const Product = require("../models/Product.model");
 const { uploadBuffer } = require("../services/cloudinary.service");
 const { validateReviewContent } = require("../utils/reviewValidation");
-
-const parsePositiveInt = (value, fallback) => {
-  const n = Number.parseInt(value, 10);
-  if (!Number.isFinite(n) || n <= 0) return fallback;
-  return n;
-};
-
-const mapLimit = async (arr, limit, mapper) => {
-  const list = Array.isArray(arr) ? arr : [];
-  const size = list.length;
-  if (size === 0) return [];
-
-  const concurrency = Math.max(1, Math.min(Number(limit) || 1, size));
-  const results = new Array(size);
-  let nextIndex = 0;
-
-  const workers = Array.from({ length: concurrency }).map(async () => {
-    while (true) {
-      const current = nextIndex;
-      nextIndex += 1;
-      if (current >= size) break;
-      results[current] = await mapper(list[current], current);
-    }
-  });
-
-  await Promise.all(workers);
-  return results;
-};
+const { parsePositiveInt } = require("../utils/validators");
+const { mapLimit } = require("../utils/concurrency");
 
 const pickReview = (r) => {
   return {
