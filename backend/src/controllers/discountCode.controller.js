@@ -1,7 +1,10 @@
 const DiscountCode = require("../models/DiscountCode.model");
 const mongoose = require("mongoose");
 
-const { parsePositiveInt, parseNonNegativeNumber } = require("../utils/validators");
+const {
+  parsePositiveInt,
+  parseNonNegativeNumber,
+} = require("../utils/validators");
 const { normalizeCode } = require("../utils/regex");
 
 // Simple utility for safe property checking

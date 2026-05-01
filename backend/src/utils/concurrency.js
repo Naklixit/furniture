@@ -47,9 +47,11 @@ const batchProcess = async (items, batchSize, delayMs, processor) => {
   for (let i = 0; i < items.length; i += batchSize) {
     const batch = items.slice(i, i + batchSize);
     const batchResults = await processor(batch);
-    results.push(...(Array.isArray(batchResults) ? batchResults : [batchResults]));
+    results.push(
+      ...(Array.isArray(batchResults) ? batchResults : [batchResults]),
+    );
     if (i + batchSize < items.length) {
-      await new Promise(resolve => setTimeout(resolve, delayMs));
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
     }
   }
   return results;
@@ -71,7 +73,7 @@ const retryWithBackoff = async (fn, maxAttempts = 3, baseDelayMs = 1000) => {
       lastError = err;
       if (attempt < maxAttempts) {
         const delay = baseDelayMs * Math.pow(2, attempt - 1);
-        await new Promise(resolve => setTimeout(resolve, delay));
+        await new Promise((resolve) => setTimeout(resolve, delay));
       }
     }
   }

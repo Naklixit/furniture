@@ -60,7 +60,11 @@ const normalizeCode = (code) => {
  * @returns {Array<string>} Unique lowercased values
  */
 const uniqueStrings = (arr) => {
-  return [...new Set((Array.isArray(arr) ? arr : []).map(s => String(s).toLowerCase()))];
+  return [
+    ...new Set(
+      (Array.isArray(arr) ? arr : []).map((s) => String(s).toLowerCase()),
+    ),
+  ];
 };
 
 module.exports = {

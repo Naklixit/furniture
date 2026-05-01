@@ -9,7 +9,10 @@ const {
   deleteResourcesByPrefix,
   deleteFolder,
 } = require("../services/cloudinary.service");
-const { parsePositiveInt, parseNonNegativeNumber } = require("../utils/validators");
+const {
+  parsePositiveInt,
+  parseNonNegativeNumber,
+} = require("../utils/validators");
 const {
   escapeRegex,
   normalizeName,
