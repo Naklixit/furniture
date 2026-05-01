@@ -401,7 +401,9 @@ const aiChat = async (req, res, next) => {
             "Bạn muốn mình gợi ý theo tiêu chí khác như giá/chất liệu/phong cách không?",
           model: "rule-reviewed-none",
           products: [],
-          ...(debug ? { debug: { ...debug, desiredLimit, requireReviewed } } : {}),
+          ...(debug
+            ? { debug: { ...debug, desiredLimit, requireReviewed } }
+            : {}),
         });
       }
       aiPool = reviewed;
@@ -453,7 +455,9 @@ const aiChat = async (req, res, next) => {
         reply: String(fb.reply || "").trim(),
         model: fb.model,
         products: fbProducts,
-        ...(debug ? { debug: { ...debug, desiredLimit, requireReviewed } } : {}),
+        ...(debug
+          ? { debug: { ...debug, desiredLimit, requireReviewed } }
+          : {}),
       });
     }
 

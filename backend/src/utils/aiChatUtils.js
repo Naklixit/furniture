@@ -285,8 +285,7 @@ const parseUserConstraints = (message) => {
     minPriceExclusive,
     maxPriceExclusive,
     hasConstraint,
-  } =
-    parsePriceConstraintsFromMessage(message);
+  } = parsePriceConstraintsFromMessage(message);
   const { minRating, maxRating, hasRatingConstraint } =
     parseRatingConstraints(message);
 
@@ -347,7 +346,10 @@ const parseUserConstraints = (message) => {
   };
 };
 
-const withinPrice = (product, { minPrice, maxPrice, minPriceExclusive, maxPriceExclusive }) => {
+const withinPrice = (
+  product,
+  { minPrice, maxPrice, minPriceExclusive, maxPriceExclusive },
+) => {
   const prices = [
     Number(product?.effectivePrice || 0),
     Number(product?.originalPrice || 0),
@@ -427,7 +429,9 @@ const buildProductHaystack = (product) => {
 const matchesCategoryTokens = (product, tokens) => {
   if (!tokens?.length) return true;
   const cat = foldText(product?.categoryName || "");
-  const nameSlug = foldText([product?.name, product?.slug].filter(Boolean).join(" "));
+  const nameSlug = foldText(
+    [product?.name, product?.slug].filter(Boolean).join(" "),
+  );
   const hay = buildProductHaystack(product);
 
   return tokens.some((tok) => {
@@ -441,7 +445,8 @@ const matchesCategoryTokens = (product, tokens) => {
       return /\bgiuong\b|\bbed\b/.test(nameSlug || hay);
     }
     if (tok === "den") return /\bden\b|\blamp\b|\blight\b/.test(cat || hay);
-    if (tok === "tuquanao") return /\btu\s*quan\s*ao\b|\bwardrobe\b/.test(cat || hay);
+    if (tok === "tuquanao")
+      return /\btu\s*quan\s*ao\b|\bwardrobe\b/.test(cat || hay);
     if (tok === "tu") return /\btu\b|\bcabinet\b|\bwardrobe\b/.test(cat || hay);
     if (tok === "ke") return /\bke\b|\bshelf\b/.test(cat || hay);
     return hay.includes(tok);
@@ -597,7 +602,6 @@ const formatProductOneLiner = (p) => {
 };
 
 const appendProductSnippetsToReply = (reply, products) => {
-
   const enabled = String(process.env.AI_APPEND_PRODUCT_SNIPPETS || "").trim();
   if (!/^(1|true|yes|on)$/i.test(enabled)) return String(reply || "").trim();
 
@@ -675,7 +679,10 @@ const inferRequestedProductCount = (message) => {
   return null;
 };
 
-const inferDesiredRecommendationLimit = (message, { defaultLimit = 3 } = {}) => {
+const inferDesiredRecommendationLimit = (
+  message,
+  { defaultLimit = 3 } = {},
+) => {
   const requested = inferRequestedProductCount(message);
   const base = requested != null ? requested : defaultLimit;
   // Safety cap: keep responses short for chat UI.
@@ -692,9 +699,10 @@ const shouldRequireReviewedProducts = (message, constraints) => {
   if (!mentionsReview) return false;
 
   // If user talks about reviews in a superlative / “top” way, avoid recommending unrated products.
-  const isTopLike = /\b(top|cao\s*nhat|noi\s*bat|tot\s*nhat|hang\s*dau|nhieu\s*nhat)\b/i.test(
-    t,
-  );
+  const isTopLike =
+    /\b(top|cao\s*nhat|noi\s*bat|tot\s*nhat|hang\s*dau|nhieu\s*nhat)\b/i.test(
+      t,
+    );
   if (isTopLike) return true;
 
   // If constraints already imply rating focus, be stricter when user explicitly mentions reviews.
