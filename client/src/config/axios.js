@@ -4,7 +4,7 @@ import { useAuthStore } from "../stores/auth.store";
 const axiosClient = axios.create({
   baseURL: import.meta.env.VITE_API_URL || "http://localhost:3000/api",
   headers: {},
-  withCredentials: true, // sau này dùng cookie/JWT thì có sẵn
+  withCredentials: true,
 });
 
 axiosClient.interceptors.request.use((config) => {
@@ -14,7 +14,6 @@ axiosClient.interceptors.request.use((config) => {
     config.headers.Authorization = `Bearer ${token}`;
   }
 
-  // Nếu gửi FormData (upload), để axios tự set multipart boundary
   try {
     const isFormData =
       typeof FormData !== "undefined" && config.data instanceof FormData;
@@ -28,7 +27,6 @@ axiosClient.interceptors.request.use((config) => {
       }
     }
   } catch {
-    // ignore
   }
 
   return config;
@@ -44,7 +42,6 @@ const refreshClient = axios.create({
 
 let refreshPromise = null;
 
-// Interceptor response (tuỳ chọn – để sau)
 axiosClient.interceptors.response.use(
   (response) => response.data,
   async (error) => {

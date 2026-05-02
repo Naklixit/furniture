@@ -20,5 +20,4 @@ module.exports = (app) => {
   app.use("/api/reviews", reviewRouter);
   app.use("/api/ai", aiRouter);
   app.use("/api/stats", statsRouter);
-  // app.use("/api", authRouter);
 };

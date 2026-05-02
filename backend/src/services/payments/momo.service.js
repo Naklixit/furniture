@@ -43,7 +43,6 @@ const verifyMomoCallbackSignature = ({ accessKey, secretKey, body }) => {
     };
   }
 
-  // Legacy format (errorCode/localMessage)
   const rawSignatureLegacy =
     `partnerCode=${b.partnerCode ?? ""}` +
     `&accessKey=${accessKey}` +

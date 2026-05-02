@@ -18,13 +18,18 @@ const {
 } = require("../utils/orderUtils");
 
 const { isDuplicateKeyError } = require("../utils/dbErrors");
-const { buildOrderSuccessRedirect, sanitizeClientBase } = require("../utils/redirectUtils");
+const {
+  buildOrderSuccessRedirect,
+  sanitizeClientBase,
+} = require("../utils/redirectUtils");
 
 const {
   adjustInventoryForStatus,
 } = require("../services/orderInventory.service");
 const { buildOrderFromRequest } = require("../services/orderBuilder.service");
-const { createPendingWithRetry } = require("../services/orders/pendingPayment.service");
+const {
+  createPendingWithRetry,
+} = require("../services/orders/pendingPayment.service");
 const {
   verifyMomoCallbackSignature,
   parseMomoResultCode,
@@ -294,6 +299,7 @@ const createVnpayPayment = async (req, res, next) => {
         orderCode: pending.orderCode,
         paymentUrl,
       });
+      //Else xóa bản ghi trong mongoDB nếu thanh toán lỗi hoặc có lỗi xảy ra trong quá trình tạo URL thanh toán VNPay để tránh rác database.
     } catch (e) {
       await VnpayPending.deleteOne({ _id: pending._id });
       throw e;
@@ -305,7 +311,6 @@ const createVnpayPayment = async (req, res, next) => {
 
 const vnpayReturn = async (req, res, next) => {
   try {
-    // Nếu thiếu config thì trả fail thay vì throw khó hiểu.
     try {
       getVnpayConfigFromEnv();
     } catch {
@@ -573,6 +578,7 @@ const createMomoPayment = async (req, res, next) => {
         deeplinkWebInApp: data?.deeplinkWebInApp || "",
       });
     } catch (e) {
+      //Xóa bản ghi trong mongoDB nếu thanh toán lỗi hoặc có lỗi xảy ra trong quá trình tạo URL thanh toán MoMo để tránh rác database.
       await MomoPending.deleteOne({ _id: pending._id });
       throw e;
     }
@@ -623,7 +629,6 @@ const momoReturn = async (req, res, next) => {
       );
     }
 
-    // Verify signature
     const verify = verifyMomoCallbackSignature({
       accessKey,
       secretKey,
@@ -774,8 +779,6 @@ const cancelMyOrder = async (req, res, next) => {
         .status(400)
         .json({ message: "Đơn hàng đã hoàn thành, không thể hủy" });
     }
-
-    // If inventory was adjusted previously for any reason, restore it.
     await adjustInventoryForStatus({ order, nextStatus: "cancelled" });
 
     order.status = "cancelled";

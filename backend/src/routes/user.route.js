@@ -13,7 +13,6 @@ const {
 router.get("/me", requireAuth, getMe);
 router.patch("/me", requireAuth, updateMe);
 
-// Admin: quản lý người dùng
 router.get("/", requireAdmin, listUsers);
 router.patch("/:id/role", requireAdmin, updateUserRole);
 router.delete("/:id", requireAdmin, deleteUserById);

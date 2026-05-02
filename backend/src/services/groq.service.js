@@ -329,7 +329,6 @@ HƯỚNG DẪN:
         err.modelTried = model;
         err.attemptedModels = modelTryList;
       } catch {
-        // ignore
       }
       lastErr = err;
       if (isModelBlockedOrMissing(err)) {
@@ -343,7 +342,6 @@ HƯỚNG DẪN:
     try {
       lastErr.attemptedModels = modelTryList;
     } catch {
-      // ignore
     }
     throw lastErr;
   }

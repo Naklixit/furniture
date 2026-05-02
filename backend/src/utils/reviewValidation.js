@@ -15,9 +15,7 @@ const normalizeSpaces = (s) => {
   return s.trim().replace(/\s+/g, " ");
 };
 
-// Hardcoded bad words list (Vietnamese + English)
 const BAD_WORDS = [
-  // Vietnamese
   "địt",
   "dit",
   "dịt",
@@ -58,7 +56,6 @@ const BAD_WORDS = [
   "do ngu",
   "đồ chó",
   "do cho",
-  // English
   "fuck",
   "fck",
   "fuk",
@@ -92,13 +89,9 @@ const looksLikeSpamOrContactInfo = (text) => {
   const t = String(text || "");
   if (!t) return false;
 
-  // URLs
   if (/https?:\/\//i.test(t) || /\bwww\./i.test(t)) return true;
-  // Emails
   if (/\b[^\s@]+@[^\s@]+\.[^\s@]+\b/i.test(t)) return true;
-  // VN phone numbers (10 digits, usually start with 0)
   if (/\b0\d{9}\b/.test(t)) return true;
-  // Social/contact keywords
   if (/\b(zalo|facebook|fb|telegram|tiktok|instagram|ig)\b/i.test(t))
     return true;
   return false;
@@ -114,13 +107,11 @@ const containsBadWords = (text) => {
     const t = term.toLowerCase();
     if (!t) continue;
     const tp = stripDiacritics(t);
-    // Word boundary-ish match to reduce false positives on short terms
     const rxSrc = `(^|\\W)${tp.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(\\W|$)`;
     try {
       const rx = new RegExp(rxSrc, "i");
       if (rx.test(lower) || rx.test(plain) || rx.test(compact)) return true;
     } catch {
-      // Fallback: simple includes
       if (lower.includes(t) || plain.includes(tp) || compact.includes(tp))
         return true;
     }
@@ -146,7 +137,6 @@ const validateReviewContent = (content) => {
     };
   }
 
-  // Too many repeated characters (e.g. "aaaaaa" / "!!!!!")
   if (/(.)\1{6,}/.test(cleaned)) {
     return { ok: false, message: "Nội dung đánh giá không hợp lệ" };
   }

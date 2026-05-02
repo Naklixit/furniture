@@ -78,7 +78,6 @@ export default function ReviewModal({ open, order, initialProductId, onClose, on
 
   const previews = useMemo(() => {
     return (files || []).map((f) => ({ file: f, url: URL.createObjectURL(f) }));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [files]);
 
   useEffect(() => {
@@ -87,8 +86,7 @@ export default function ReviewModal({ open, order, initialProductId, onClose, on
         try {
           URL.revokeObjectURL(p.url);
         } catch {
-          // ignore
-        }
+            }
       });
     };
   }, [previews]);
@@ -296,7 +294,6 @@ export default function ReviewModal({ open, order, initialProductId, onClose, on
                       try {
                         e.target.value = "";
                       } catch {
-                        // ignore
                       }
                     }}
                   />

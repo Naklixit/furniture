@@ -48,7 +48,6 @@ export default function ImageLightbox({
 
     const t = window.requestAnimationFrame(() => setEntered(true));
     return () => window.cancelAnimationFrame(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, initialIndex, urls.length]);
 
   useEffect(() => {
@@ -132,7 +131,6 @@ export default function ImageLightbox({
     const z = clamp(nextZoom, 1, 3);
     setZoom(z);
 
-    // Keep pan within bounds after zoom changes
     window.requestAnimationFrame(() => {
       measureBaseSize();
       setPan((p) => {
@@ -156,7 +154,6 @@ export default function ImageLightbox({
       aria-modal="true"
       aria-label="Xem ảnh"
       onMouseDown={(e) => {
-        // click backdrop to close
         if (e.target === e.currentTarget) onClose?.();
       }}
     >
@@ -260,7 +257,6 @@ export default function ImageLightbox({
                 try {
                   e.currentTarget.setPointerCapture?.(e.pointerId);
                 } catch {
-                  // ignore
                 }
               }}
               onPointerMove={(e) => {

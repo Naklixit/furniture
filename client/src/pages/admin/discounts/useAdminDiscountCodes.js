@@ -75,7 +75,6 @@ export const useAdminDiscountCodes = ({ enabled }) => {
     }
 
     refresh({ search: debouncedSearch, page: pageToFetch, limit });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled, debouncedSearch, page, limit]);
 
   const reset = () => {

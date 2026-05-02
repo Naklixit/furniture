@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 require("dotenv").config();
 
 const mongoose = require("mongoose");
@@ -196,6 +195,5 @@ main()
     try {
       await mongoose.connection.close();
     } catch {
-      // ignore
     }
   });

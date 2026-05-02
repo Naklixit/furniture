@@ -1,7 +1,3 @@
-/**
- * Shared validation and parsing utilities
- * Centralizes duplicated validation logic from controllers
- */
 
 /**
  * Parse positive integer from request query/params

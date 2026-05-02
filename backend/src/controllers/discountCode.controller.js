@@ -7,7 +7,6 @@ const {
 } = require("../utils/validators");
 const { normalizeCode } = require("../utils/regex");
 
-// Simple utility for safe property checking
 const hasOwn = (obj, key) =>
   Object.prototype.hasOwnProperty.call(obj || {}, key);
 

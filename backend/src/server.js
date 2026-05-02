@@ -2,7 +2,6 @@ const express = require("express");
 const bodyParser = require("body-parser");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
-// Load .env only for local development to avoid overriding platform env vars.
 if (process.env.NODE_ENV !== "production") {
   require("dotenv").config();
 }
@@ -10,7 +9,6 @@ const connectDB = require("./config/connectDB.js");
 const routes = require("./routes/index.routes.js");
 const app = express();
 const port = Number(process.env.PORT) || 3000;
-// Middleware
 const allowedOrigins = [process.env.CLIENT_URL]
   .filter(Boolean)
   .map((x) => String(x).trim().replace(/\/$/, ""));
@@ -49,7 +47,6 @@ connectDB().then(async () => {
       console.log(`[migrate] Dropped old review index "${oldIdx.name}"`);
     }
   } catch (e) {
-    // Ignore if collection/index doesn't exist yet
     if (!/ns not found|index not found/i.test(String(e?.message || ""))) {
       console.warn("[migrate] Review index migration warning:", e?.message);
     }
@@ -60,7 +57,6 @@ app.use((err, req, res, next) => {
   let statusCode = err.statusCode || 500;
   let message = err.message || "Lỗi server";
 
-  // Multer errors
   if (err && err.code === "LIMIT_FILE_SIZE") {
     statusCode = 400;
     message = "File ảnh tối đa 10MB";

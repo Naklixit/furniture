@@ -57,7 +57,6 @@ const adjustInventoryForStatus = async ({ order, nextStatus, session }) => {
       order.inventoryRestoredAt = null;
       return;
     } catch (e) {
-      // Best-effort rollback (when not in a transaction)
       for (const it of applied) {
         try {
           await Product.updateOne(
@@ -66,14 +65,12 @@ const adjustInventoryForStatus = async ({ order, nextStatus, session }) => {
             { session },
           );
         } catch {
-          // ignore
         }
       }
       throw e;
     }
   }
 
-  // If leaving shipping/completed (e.g. cancel/revert), restore stock once.
   if (!needDeduct && prevAdjusted) {
     const aggregated = sumQtyByProductId(order.items);
     if (aggregated.length) {
@@ -93,7 +90,6 @@ const adjustInventoryForStatus = async ({ order, nextStatus, session }) => {
 
 module.exports = {
   adjustInventoryForStatus,
-  // exported for potential reuse/tests
   sumQtyByProductId,
   isStockDeductStatus,
 };

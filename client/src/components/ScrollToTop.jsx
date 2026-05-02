@@ -26,7 +26,7 @@ const savePositions = (positions) => {
   try {
     window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(positions || {}));
   } catch {
-    // ignore
+
   }
 };
 
@@ -41,7 +41,6 @@ const ScrollToTop = () => {
   }, [location.pathname, location.search]);
 
   useEffect(() => {
-    // Persist scrollY for current page while user scrolls
     let rafId = 0;
     const onScroll = () => {
       if (rafId) return;
@@ -63,13 +62,9 @@ const ScrollToTop = () => {
 
   useEffect(() => {
     const pathname = location.pathname || "";
-
-    // Chỉ đổi query (?q=, ?tab=...) — giữ scroll & focus (không blur input tìm kiếm).
     const prevPath = prevPathnameRef.current;
     const pathnameChanged = prevPath !== null && prevPath !== pathname;
     prevPathnameRef.current = pathname;
-
-    // Lần đầu vào app: luôn về đầu trang
     if (!didInitRef.current) {
       didInitRef.current = true;
       const rafInit = window.requestAnimationFrame(() => {

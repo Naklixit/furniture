@@ -40,11 +40,8 @@ const shouldInheritContext = ({ message, constraints }) => {
   const t = foldText(message);
   if (!t) return false;
 
-  // If current message already names a category/material, don't inherit.
   if (constraints?.categoryTokens?.length) return false;
   if (constraints?.hasMaterialConstraint) return false;
-
-  // Follow-up patterns: user is adjusting constraints rather than starting new topic.
   if (constraints?.hasPriceConstraint || constraints?.hasRatingConstraint)
     return true;
   if (constraints?.wantsOnSale) return true;
@@ -435,9 +432,7 @@ const aiChat = async (req, res, next) => {
           modelTried: tried,
           attemptedModels: attempted,
         });
-      } catch {
-        // ignore
-      }
+      } catch {}
 
       const fb = localFallback({
         message,
