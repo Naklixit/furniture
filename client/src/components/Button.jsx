@@ -17,7 +17,7 @@ const Button = ({
   
   const variants = {
     // Nút màu xanh đậm (Đăng nhập)
-    primary: "bg-orange-500 hover:bg-orange-600 text-white font-semibold",
+    primary: "bg-teal-600 hover:bg-teal-700 text-white font-semibold",
     // Nút màu xanh nhạt (Tạo tài khoản)
     secondary: "bg-blue-50 hover:bg-blue-100 text-blue-600 font-bold",
     // Kiểu nút cho thẻ Đăng ký

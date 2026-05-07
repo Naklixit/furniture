@@ -289,7 +289,7 @@ export default function ProfilePage() {
         <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-8">
           {/* Thanh bên */}
           <aside className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm anim-fade-up transition-shadow duration-200 hover:shadow-md self-start h-fit">
-            <div className="bg-gradient-to-r from-zinc-600 to-emerald-600 px-5 py-5 text-white">
+            <div className="bg-gradient-to-r from-teal-600 to-zinc-600 px-5 py-5 text-white">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-full bg-white/15 border border-white/20 flex items-center justify-center font-extrabold">
                   {getUserInitial(user)}
@@ -352,7 +352,7 @@ export default function ProfilePage() {
             {activeTab === "profile" ? (
               <>
                 <div className="px-6 py-5 border-b border-gray-200">
-                  <div className="text-base font-semibold text-gray-900">Thông tin cá nhân</div>
+                  <div className="text-lg font-extrabold text-gray-900">Thông tin cá nhân</div>
                 </div>
 
                 {saveError || saveOk ? (
@@ -369,7 +369,7 @@ export default function ProfilePage() {
                 ) : null}
 
                 <div className="p-6">
-                  <div className="rounded-2xl bg-gradient-to-r from-zinc-600 to-emerald-600 text-white p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition-transform duration-200 hover:-translate-y-0.5">
+                  <div className="rounded-2xl bg-gradient-to-r from-teal-600 to-zinc-600 text-white p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition-transform duration-200 hover:-translate-y-0.5">
                     <div className="flex items-center gap-4">
                       <div className="w-14 h-14 rounded-2xl bg-white/15 border border-white/20 flex items-center justify-center">
                         <UserRound size={28} className="text-white" />
@@ -498,8 +498,8 @@ export default function ProfilePage() {
                 <div className="px-6 py-5 border-b drop-shadow border-gray-200 ">
                   <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                     <div>
-                      <div className="text-xl font-bold text-gray-900">Đơn hàng của tôi</div>
-                      <div className="text-sm text-gray-500 font-bold">Theo dõi và quản lý đơn hàng của bạn</div>
+                      <div className="text-lg font-bold text-gray-900">Đơn hàng của tôi</div>
+                      <div className="text-sm text-gray-500">Theo dõi và quản lý đơn hàng của bạn</div>
                     </div>
 
                     <button
@@ -564,7 +564,7 @@ export default function ProfilePage() {
                             className="rounded-2xl border border-gray-200 bg-white overflow-hidden shadow-xl transition-all duration-200 hover:shadow-md hover:-translate-y-0.5"
                           >
                             {/* Header */}
-                            <div className="px-6 py-4 bg-gray-50 flex items-center justify-between gap-4">
+                            <div className="px-6 py-4 bg-gray-100 flex items-center justify-between gap-4">
                               <div className="min-w-0">
                                 <div className="flex items-center gap-3">
                                   <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-amber-50 border border-amber-200">

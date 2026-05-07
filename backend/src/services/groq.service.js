@@ -1,10 +1,7 @@
 const axios = require("axios");
 
-// Model chính được ưu tiên để sử dụng cho Groq API
 const MODEL_FALLBACK = "llama-3.3-70b-versatile";
 
-// Danh sách các model dự phòng nếu model chính bị lỗi (quá tải, không khả dụng)
-// Nếu model chính không chạy được, API sẽ thử lần lượt các model trong danh sách này
 const FALLBACK_MODELS = [
   "llama-3.1-70b-versatile",
   "llama-3.1-8b-instant",
@@ -242,9 +239,9 @@ HƯỚNG DẪN:
   const url = `${baseURL.replace(/\/$/, "")}/chat/completions`;
 
   const basePayload = {
-    temperature: 0.7,
+    temperature: 0.4,
     top_p: 0.9,
-    max_tokens: 700,
+    max_tokens: 500,
     response_format: { type: "json_object" },
     messages: [
       { role: "system", content: SYSTEM_INSTRUCTION },
@@ -328,8 +325,7 @@ HƯỚNG DẪN:
       try {
         err.modelTried = model;
         err.attemptedModels = modelTryList;
-      } catch {
-      }
+      } catch {}
       lastErr = err;
       if (isModelBlockedOrMissing(err)) {
         continue;
@@ -341,8 +337,7 @@ HƯỚNG DẪN:
   if (lastErr) {
     try {
       lastErr.attemptedModels = modelTryList;
-    } catch {
-    }
+    } catch {}
     throw lastErr;
   }
 

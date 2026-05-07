@@ -410,7 +410,7 @@ function Header() {
               </button>
               <button
                 type="button"
-                className="px-4 py-2 text-sm font-semibold  bg-orange-500 hover:bg-orange-600 text-white  transition shadow-sm"
+                className="px-4 py-2 text-sm font-semibold  bg-teal-600 hover:bg-teal-600 text-white  transition shadow-sm"
                 onClick={() => navigate("/register")}
               >
                 Đăng Ký

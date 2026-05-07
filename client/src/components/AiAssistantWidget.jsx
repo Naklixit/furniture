@@ -56,7 +56,7 @@ export default function AiAssistantWidget() {
       {
         id: crypto?.randomUUID?.() || String(Date.now()),
         role: "assistant",
-        text: "Mình là trợ lý AI tư vấn nội thất. Bạn đang cần mua giường, bàn, ghế, tủ/kệ hay sofa?",
+        text: "Mình là trợ lý AI tư vấn nội thất. Bạn cần mua giường, bàn, sofa hay ghế?",
         products: [],
       },
     ];
